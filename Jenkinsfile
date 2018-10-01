@@ -31,10 +31,16 @@ pipeline {
 
         stage("Unit Test") {
           steps {
-            sh 'go test -cover -v ./...'
+            sh 'go test -cover -coverprofile=coverage.txt -v ./...'
+            sh 'gocover-cobertura < coverage.txt > coverage.xml'
+          }
+          post {
+            always {
+              archiveArtifacts "coverage.*"
+            }
           }
         }
-      }
+      }      
     }
   }
 
