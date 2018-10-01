@@ -4,8 +4,16 @@ Requested by Daniel Schmidt
 
 ## Development
 
-We recommend development within a docker container for an easy setup.
-For this please use a command like `docker build -t dev -f Dockerfile.dev . && docker run -v $(pwd):/src -it dev /bin/bash`
+### With docker
+
+The easiest way to develop on this project is to use the make file (which relies on docker).
+For example `make test` will run linting and tests and it will run all these commands inside a docker container.
+
+### Inside docker
+
+You can use this command to start an interactive docker shell with everything you need preinstalled:
+
+`docker build -t dev -f Dockerfile.dev . && docker run -v $(pwd):/src -it dev /bin/bash`
 
 ## Production Deployment
 
