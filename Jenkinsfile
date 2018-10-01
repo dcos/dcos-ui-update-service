@@ -21,22 +21,26 @@ pipeline {
   }
 
   stages {
-    stage("Format") {
-      steps {
-        sh 'test -z "$(gofmt -l -d ./ | tee /dev/stderr)"'
-      }
-    }
+    stage("Run Tests") {
+      parallel {
+        stage("Format") {
+          steps {
+            sh 'test -z "$(gofmt -l -d ./ | tee /dev/stderr)"'
+          }
+        }
 
-    stage("Lint") {
-      steps {
-        sh 'golint -set_exit_status ./'
-      }
-    }
+        stage("Lint") {
+          steps {
+            sh 'golint -set_exit_status ./'
+          }
+        }
 
-    // TODO: take a look coverages (https://github.com/dcos/dcos-go/blob/master/scripts/test.sh#L56)
-    stage("Test") {
-      steps {
-        sh 'go test -v ./...'
+        // TODO: take a look coverages (https://github.com/dcos/dcos-go/blob/master/scripts/test.sh#L56)
+        stage("Unit Test") {
+          steps {
+            sh 'go test -v ./...'
+          }
+        }
       }
     }
   }
