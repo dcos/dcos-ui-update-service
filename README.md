@@ -1,4 +1,4 @@
-# docs-ui-update-service
+# DC/OS UI Update Service
 
 Requested by Daniel Schmidt
 
