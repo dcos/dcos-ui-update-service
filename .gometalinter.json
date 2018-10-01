@@ -1,0 +1,31 @@
+{
+  "Aggregate": true,
+  "Concurrency": 4,
+  "LineLength": 150,
+  "Cyclo": 20,
+  "Deadline": "600s",
+  "DisableAll": true,
+  "Enable": [
+    "deadcode",
+    "gocyclo",
+    "goimports",
+    "golint",
+    "gofmt",
+    "gotype",
+    "vetshadow",
+    "varcheck",
+    "structcheck",
+    "megacheck",
+    "ineffassign",
+    "interfacer",
+    "unconvert",
+    "goconst",
+    "lll",
+    "misspell",
+    "unparam",
+    "unused",
+    "vet"
+  ],
+  "Exclude": [".*_test.go"],
+  "Vendor": true
+}

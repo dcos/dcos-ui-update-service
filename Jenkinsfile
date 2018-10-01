@@ -23,22 +23,15 @@ pipeline {
   stages {
     stage("Run Tests") {
       parallel {
-        stage("Format") {
-          steps {
-            sh 'test -z "$(gofmt -l -d ./ | tee /dev/stderr)"'
-          }
-        }
-
         stage("Lint") {
           steps {
-            sh 'golint -set_exit_status ./'
+            sh 'gometalinter --config=.gometalinter.json ./...'
           }
         }
 
-        // TODO: take a look coverages (https://github.com/dcos/dcos-go/blob/master/scripts/test.sh#L56)
         stage("Unit Test") {
           steps {
-            sh 'go test -v ./...'
+            sh 'go test -cover -v ./...'
           }
         }
       }

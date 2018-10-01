@@ -2,5 +2,6 @@ FROM golang:1.11
 WORKDIR /src
 RUN apt-get update && apt-get install -y vim
 RUN go get -u github.com/golang/lint/golint
+RUN go get -u github.com/alecthomas/gometalinter && gometalinter --install
 
 CMD /src/main
