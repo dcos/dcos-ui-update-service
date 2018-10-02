@@ -26,6 +26,9 @@
     "unused",
     "vet"
   ],
-  "Exclude": [".*_test.go"],
+  "Exclude": [
+    ".*_test.go",
+    "exported \\w+ (\\S*['.]*)([a-zA-Z'.*]*) should have comment or be unexported"
+  ],
   "Vendor": true
 }
