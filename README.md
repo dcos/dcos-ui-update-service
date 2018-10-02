@@ -13,7 +13,7 @@ For example `make test` will run linting and tests and it will run all these com
 
 You can use this command to start an interactive docker shell with everything you need preinstalled:
 
-`docker build -t dev -f Dockerfile.dev . && docker run -v $(pwd):/src -it dev /bin/bash`
+`docker build -t dev -f Dockerfile.dev . && docker run -p 8080:80 -v $(pwd):/src -it dev /bin/bash`
 
 ## Production Deployment
 

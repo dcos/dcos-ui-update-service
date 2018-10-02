@@ -2,9 +2,21 @@ CURRENT_DIR=$(shell pwd)
 IMAGE_NAME=dcos/dcos-ui-update-service
 DOCKER_DIR=/src
 
+.PHONY: start 
+start: docker-image
+	$(call inDocker,rerun -v)
+
+.PHONY: watchTest 
+watchTest: docker-image 
+	$(call inDocker,rerun -v --test)
+
 .PHONY: test
-test: lint
+test: vet
 	$(call inDocker,go test -race -cover ./...)
+
+.PHONY: vet
+vet: lint
+	$(call inDocker,go vet ./...)
 
 .PHONY: lint
 lint: docker-image
@@ -27,7 +39,9 @@ ifdef NO_DOCKER
 else
   define inDocker
     docker run \
+      -p 8080:80 \
       -v $(CURRENT_DIR):$(DOCKER_DIR) \
+      -it \
       --rm \
       $(IMAGE_NAME) \
     /bin/sh -c "$1"
