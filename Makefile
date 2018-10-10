@@ -28,6 +28,11 @@ ifndef NO_DOCKER
 	docker build -t $(IMAGE_NAME) -f Dockerfile.dev .
 endif
 
+.PHONY: build
+build: docker-image
+	$(call inDocker,env GOOS=linux GO111MODULE=on go build \
+		-o build/dcos-ui-update-service ./)
+
 .PHONY: clean
 clean:
 	rm -rf build
