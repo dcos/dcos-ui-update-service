@@ -1,10 +1,63 @@
 package main
 
 import (
+	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 )
+
+func listen() (net.Listener, error) {
+	// Allocate a new port in the ephemeral range and listen on it.
+	return net.Listen("tcp", "127.0.0.1:0")
+}
+
+func TestApplication(t *testing.T) {
+	// Get a socket to listen on.
+	l, err := listen()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// appDoneCh waits for Run() to exit and receives the error.
+	appDoneCh := make(chan error)
+	// Wait for the server to exit and return an error before returning
+	// from the test. This is important as having zombie goroutines in your
+	// tests can cause some very hard to debug issues.
+	defer func() { t.Logf("Server stopped: %v", <-appDoneCh) }()
+	// Close the listener after this test exits. This triggers the server
+	// to stop running and return an error from Run().
+	defer l.Close()
+	// Start a test server.
+	cfg := NewDefaultConfig()
+	cfg.DocumentRoot = "./testdata/docroot/public"
+	go func() {
+		appDoneCh <- Run(cfg, l)
+	}()
+	// Yay! we're finally ready to perform requests against our server.
+	addr := "http://" + l.Addr().String()
+	resp, err := http.Get(addr + "/static/test.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if status := resp.StatusCode; status != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+	got, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exp, err := ioutil.ReadFile(filepath.Join(cfg.DocumentRoot, "test.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(exp) {
+		t.Fatalf("Expected %q but got %q", string(exp), string(got))
+	}
+}
 
 func TestRouter(t *testing.T) {
 
@@ -15,7 +68,7 @@ func TestRouter(t *testing.T) {
 		}
 
 		rr := httptest.NewRecorder()
-		Router().ServeHTTP(rr, req)
+		newRouter(defaultAssetPrefix, defaultDocumentRoot).ServeHTTP(rr, req)
 
 		if status := rr.Code; status != http.StatusOK {
 			t.Errorf("handler returned wrong status code: got %v want %v",
@@ -49,7 +102,7 @@ func TestRouter(t *testing.T) {
 				}
 
 				rr := httptest.NewRecorder()
-				Router().ServeHTTP(rr, req)
+				newRouter(defaultAssetPrefix, defaultDocumentRoot).ServeHTTP(rr, req)
 
 				if rr.Code != tt.statusCode {
 					t.Errorf("handler for %v returned unexpected statuscode: got %v want %v",
