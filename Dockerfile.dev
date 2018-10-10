@@ -1,9 +1,10 @@
 FROM golang:1.11
 WORKDIR /src
-RUN apt-get update && apt-get install -y vim
-RUN go get -u github.com/golang/lint/golint
-RUN go get -u github.com/alecthomas/gometalinter && gometalinter --install
-RUN go get -u github.com/t-yuki/gocover-cobertura
-RUN go get -u github.com/ivpusic/rerun
+
+RUN apt-get update && apt-get install -y vim python-pip groff && \
+    pip install --upgrade awscli
+
+RUN go get -u github.com/alecthomas/gometalinter github.com/t-yuki/gocover-cobertura github.com/ivpusic/rerun && \
+    gometalinter --install
 
 CMD /src/main
