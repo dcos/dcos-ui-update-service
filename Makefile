@@ -14,10 +14,6 @@ watchTest: docker-image
 test: vet
 	$(call inDocker,go test -race -cover ./...)
 
-.PHONY: vet
-vet: lint
-	$(call inDocker,go vet ./...)
-
 .PHONY: lint
 lint: docker-image
 	$(call inDocker,gometalinter --config=.gometalinter.json ./...)
@@ -44,9 +40,9 @@ ifdef NO_DOCKER
 else
   define inDocker
     docker run \
-      -p 8080:80 \
       -v $(CURRENT_DIR):$(DOCKER_DIR) \
       -it \
+      --name dcos-ui-service \
       --rm \
       $(IMAGE_NAME) \
     /bin/sh -c "$1"

@@ -21,6 +21,12 @@ pipeline {
   }
 
   stages {
+    stage("Build") {
+      steps {
+        sh 'go build ./...'
+      }
+    }
+
     stage("Run Tests") {
       parallel {
         stage("Lint") {
@@ -44,11 +50,11 @@ pipeline {
     }
 
     stage("Deploy to S3") {
-      // when {
-      //   expression {
-      //     master_branches.contains(BRANCH_NAME)
-      //   }
-      // }
+      when {
+        expression {
+          master_branches.contains(BRANCH_NAME)
+        }
+      }
 
       steps {
         withCredentials([
@@ -56,7 +62,7 @@ pipeline {
           string(credentialsId: "875cfce9-90ca-4174-8720-816b4cb7f10f", variable: "AWS_SECRET_ACCESS_KEY"),
         ]) {
           sh "GOOS=linux GO111MODULE=on go build -o build/dcos-ui-update-service ./"
-          // TODO: think about versioning
+          // TODO: think about versioning https://jira.mesosphere.com/browse/DCOS-43672
           sh "aws s3 cp build/dcos-ui-update-service s3://downloads.mesosphere.io/dcos-ui-update-service/latest/dcos-ui-update-service"
         }
       }

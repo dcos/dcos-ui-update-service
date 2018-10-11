@@ -75,7 +75,7 @@ func Run(cfg Config, l net.Listener) error {
 
 func newRouter(assetPrefix, documentRoot string) *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/api/v1/", ApiHandler)
+	r.HandleFunc("/api/v1/", APIHandler)
 	r.PathPrefix(assetPrefix).Handler(StaticHandler(assetPrefix, documentRoot))
 	return r
 }
@@ -84,6 +84,6 @@ func StaticHandler(urlpath, fspath string) http.Handler {
 	return http.StripPrefix(urlpath, http.FileServer(http.Dir(fspath)))
 }
 
-func ApiHandler(w http.ResponseWriter, r *http.Request) {
+func APIHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
