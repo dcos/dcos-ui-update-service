@@ -44,7 +44,6 @@ ifdef NO_DOCKER
 else
   define inDocker
     docker run \
-      -p 8080:80 \
       -v $(CURRENT_DIR):$(DOCKER_DIR) \
       -it \
       --rm \

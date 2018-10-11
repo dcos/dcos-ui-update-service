@@ -1,9 +1,11 @@
 FROM golang:1.11
 WORKDIR /src
 RUN apt-get update && apt-get install -y vim
+RUN mkdir -p /run/dcos
 RUN go get -u github.com/golang/lint/golint
 RUN go get -u github.com/alecthomas/gometalinter && gometalinter --install
 RUN go get -u github.com/t-yuki/gocover-cobertura
 RUN go get -u github.com/ivpusic/rerun
+RUN go get -u github.com/gorilla/mux
 
 CMD /src/main
