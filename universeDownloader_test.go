@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,71 +15,13 @@ func TestUniverseDownloader(t *testing.T) {
 		io.WriteString(rw, defaultResponse)
 	})
 
-	t.Run("GetPackageVersions", func(t *testing.T) {
-		t.Run("sends a request to /package/list-versions", func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-				accept := req.Header.Get("accept")
-				if accept != "application/vnd.dcos.package.list-versions-response+json;charset=utf-8;version=v1" {
-					t.Fatalf("Accept header is set incorrectly")
-				}
-
-				contentType := req.Header.Get("content-type")
-				if contentType != "application/vnd.dcos.package.list-versions-request+json;charset=utf-8;version=v1" {
-					t.Fatalf("content-type header is set incorrectly")
-				}
-
-				path := req.URL.Path
-				if path != "/package/list-versions" {
-					t.Fatalf("Expected path %q, got %q", "/package/list-versions", path)
-				}
-
-				body, err := ioutil.ReadAll(req.Body)
-				defer req.Body.Close()
-				if err != nil {
-					t.Fatalf("Could not read the body")
-					return
-				}
-
-				var request ListVersionRequest
-
-				err = json.Unmarshal(body, &request)
-				if err != nil {
-					t.Fatalf("Could not parse the body to JSON")
-					return
-				}
-
-				if !request.IncludePackageVersions {
-					t.Fatalf("Expect to include request for package versions")
-				}
-
-				if request.PackageName != "dcos-ui" {
-					t.Fatalf("Expect to request info for dcos-ui, instead got %q", request.PackageName)
-				}
-
-				io.WriteString(rw, defaultResponse)
-			}))
-			// Close the server when test finishes
-			defer server.Close()
-
-			loader := UniverseDownloader{
-				Client:      server.Client(),
-				UniverseURL: server.URL,
-			}
-
-			resp, err := loader.getPackageVersions("dcos-ui")
-
-			if err != nil {
-				t.Fatalf("Expected no error, got %q", err.Error())
-			}
-
-			res := resp.Results["2.25.0"]
-
-			if res != "11" {
-				t.Fatalf("Expected 11 as a result, got %q from %#v", res, resp.Results)
-			}
+	t.Run("GetAssetsForPackage", func(t *testing.T) {
+		t.Parallel()
+		t.Run("should throw if server errors", func(t *testing.T) {
+			t.Skip()
 		})
-
-		t.Run("returns error if no JSON is returned", func(t *testing.T) {
+		t.Run("should throw if server returns no JSON", func(t *testing.T) {
+			t.Skip()
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				io.WriteString(rw, "Not found")
 			}))
@@ -89,28 +29,22 @@ func TestUniverseDownloader(t *testing.T) {
 			defer server.Close()
 
 			loader := UniverseDownloader{
-				Client:      server.Client(),
-				UniverseURL: server.URL,
+				Cosmos: CosmosClient{Client: server.Client(),
+					UniverseURL: server.URL,
+				},
 			}
 
-			_, err := loader.getPackageVersions("dcos-ui")
+			_, err := loader.getAssetsForPackage("dcos-ui", "2.25.0")
 
 			if err == nil {
 				t.Fatalf("Expected error, got nil")
 			}
 		})
-	})
 
-	t.Run("GetAssetsForPackage", func(t *testing.T) {
 		t.Run("should make a call to cosmos describe", func(t *testing.T) {
 			t.Skip()
 		})
-		t.Run("should throw if server errors", func(t *testing.T) {
-			t.Skip()
-		})
-		t.Run("should throw if server returns no JSON", func(t *testing.T) {
-			t.Skip()
-		})
+
 		t.Run("should return list of URLs download", func(t *testing.T) {
 			t.Skip()
 		})
@@ -134,8 +68,9 @@ func TestUniverseDownloader(t *testing.T) {
 			defer server.Close()
 
 			loader := UniverseDownloader{
-				Client:      server.Client(),
-				UniverseURL: "http://unkonwn",
+				Cosmos: CosmosClient{Client: server.Client(),
+					UniverseURL: "http://unkonwn",
+				},
 			}
 
 			err := loader.LoadVersion("2.25.0", "/")
@@ -155,8 +90,9 @@ func TestUniverseDownloader(t *testing.T) {
 			defer server.Close()
 
 			loader := UniverseDownloader{
-				Client:      server.Client(),
-				UniverseURL: server.URL,
+				Cosmos: CosmosClient{Client: server.Client(),
+					UniverseURL: server.URL,
+				},
 			}
 
 			err := loader.LoadVersion("3.25.0", "/")
@@ -176,8 +112,9 @@ func TestUniverseDownloader(t *testing.T) {
 			defer server.Close()
 
 			loader := UniverseDownloader{
-				Client:      server.Client(),
-				UniverseURL: server.URL,
+				Cosmos: CosmosClient{Client: server.Client(),
+					UniverseURL: server.URL,
+				},
 			}
 
 			err := loader.LoadVersion("2.25.0", "/ponies")
