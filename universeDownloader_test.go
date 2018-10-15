@@ -1,11 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	mocks "github.com/dcos/docs-ui-update-service/mocks"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
 func TestUniverseDownloader(t *testing.T) {
@@ -25,7 +30,7 @@ func TestUniverseDownloader(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				io.WriteString(rw, "Not found")
 			}))
-			// Close the server when test finishes
+
 			defer server.Close()
 
 			loader := UniverseDownloader{
@@ -63,14 +68,12 @@ func TestUniverseDownloader(t *testing.T) {
 		t.Parallel()
 
 		t.Run("throws an error if it can't reach the server", func(t *testing.T) {
-			server := httptest.NewServer(defaultHandler)
-			// Close the server when test finishes
-			defer server.Close()
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+			mockCosmos := mocks.NewMockCosmosAPI(mockCtrl)
 
 			loader := UniverseDownloader{
-				Cosmos: CosmosClient{Client: server.Client(),
-					UniverseURL: "http://unkonwn",
-				},
+				Cosmos: mockCosmos.EXPECT().listPackageVersions("2.25.0").Return(nil, fmt.Errorf("could not reach")),
 			}
 
 			err := loader.LoadVersion("2.25.0", "/")

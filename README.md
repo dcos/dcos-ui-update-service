@@ -19,3 +19,13 @@ You can use this command to start an interactive docker shell with everything yo
 
 In the future we will push this image to dockerhub automatically.
 Currently to build a production docker image you need to run `docker build .`
+
+## Generating mocks
+
+We use go generate for generating mocks using genmock. To generate a new mock please use a comment like this:
+
+```go
+//go:generate mockgen -destination=mocks/mock_cosmos.go -package=mocks -source ./cosmosClient.go CosmosAPI
+```
+
+and generate the mocks using `go generate ./...`
