@@ -14,6 +14,12 @@ func listen() (net.Listener, error) {
 	return net.Listen("tcp", "127.0.0.1:0")
 }
 
+func testConfig() Config {
+	cfg := NewDefaultConfig()
+	cfg.MasterCountFile = "./fixtures/single-master"
+	return cfg
+}
+
 func TestApplication(t *testing.T) {
 	// Get a socket to listen on.
 	l, err := listen()
@@ -30,7 +36,7 @@ func TestApplication(t *testing.T) {
 	// to stop running and return an error from Run().
 	defer l.Close()
 	// Start a test server.
-	cfg := NewDefaultConfig()
+	cfg := testConfig()
 	cfg.DocumentRoot = "./testdata/docroot/public"
 	go func() {
 		appDoneCh <- Run(cfg, l)
@@ -66,9 +72,10 @@ func TestRouter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		cfg := testConfig()
 
 		rr := httptest.NewRecorder()
-		newRouter(defaultAssetPrefix, defaultDocumentRoot).ServeHTTP(rr, req)
+		newRouter(cfg).ServeHTTP(rr, req)
 
 		if status := rr.Code; status != http.StatusOK {
 			t.Errorf("handler returned wrong status code: got %v want %v",
@@ -100,9 +107,10 @@ func TestRouter(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				cfg := testConfig()
 
 				rr := httptest.NewRecorder()
-				newRouter(defaultAssetPrefix, defaultDocumentRoot).ServeHTTP(rr, req)
+				newRouter(cfg).ServeHTTP(rr, req)
 
 				if rr.Code != tt.statusCode {
 					t.Errorf("handler for %v returned unexpected statuscode: got %v want %v",
