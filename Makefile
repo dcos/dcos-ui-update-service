@@ -2,8 +2,16 @@ CURRENT_DIR=$(shell pwd)
 IMAGE_NAME=dcos/dcos-ui-update-service
 DOCKER_DIR=/src
 
+.PHONY: start 
+start: docker-image
+	$(call inDocker,rerun -v)
+
+.PHONY: watchTest 
+watchTest: docker-image 
+	$(call inDocker,rerun -v --test)
+
 .PHONY: test
-test: lint
+test: vet
 	$(call inDocker,go test -race -cover ./...)
 
 .PHONY: lint
@@ -15,6 +23,11 @@ docker-image:
 ifndef NO_DOCKER
 	docker build -t $(IMAGE_NAME) -f Dockerfile.dev .
 endif
+
+.PHONY: build
+build: docker-image
+	$(call inDocker,env GOOS=linux GO111MODULE=on go build \
+		-o build/dcos-ui-update-service ./)
 
 .PHONY: clean
 clean:
@@ -28,6 +41,8 @@ else
   define inDocker
     docker run \
       -v $(CURRENT_DIR):$(DOCKER_DIR) \
+      -it \
+      --name dcos-ui-service \
       --rm \
       $(IMAGE_NAME) \
     /bin/sh -c "$1"
