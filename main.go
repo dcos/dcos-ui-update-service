@@ -11,13 +11,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Config holds the configuration vaules needed for the Application
 type Config struct {
 	// The URL path at which to host static assets.
 	AssetPrefix string
 	// The filesystem path from which static assets should be served.
 	DocumentRoot string
 
-	UniverseUrl string
+	UniverseURL string
 
 	// The filesystem path where downloaded versions are stored
 	VersionsRoot string
@@ -26,13 +27,14 @@ type Config struct {
 	MasterCountFile string
 }
 
-func NewConfig(assetPrefix, documentRoot, universeUrl, versionsRoot, masterCountFile string) Config {
+// NewConfig returns an instance of Config to be used by the Application
+func NewConfig(assetPrefix, documentRoot, universeURL, versionsRoot, masterCountFile string) Config {
 	// Don't use keyed literals so we get errors at compile time when new
 	// config fields get added.
 	return Config{
 		assetPrefix,
 		documentRoot,
-		universeUrl,
+		universeURL,
 		versionsRoot,
 		masterCountFile,
 	}
@@ -42,16 +44,17 @@ func NewConfig(assetPrefix, documentRoot, universeUrl, versionsRoot, masterCount
 const (
 	defaultAssetPrefix     = "/static/"
 	defaultDocumentRoot    = "./public"
-	defaultUniverseUrl     = "https://leader.mesos"
+	defaultUniverseURL     = "https://leader.mesos"
 	defaultVersionsRoot    = "./versions"
-	defaultMasterCountFile = "https://leader.mesos"
+	defaultMasterCountFile = "/opt/mesosphere/etc/master_count"
 )
 
+// NewDefaultConfig creates a Config from default values
 func NewDefaultConfig() Config {
 	return NewConfig(
 		defaultAssetPrefix,
 		defaultDocumentRoot,
-		defaultUniverseUrl,
+		defaultUniverseURL,
 		defaultVersionsRoot,
 		defaultMasterCountFile,
 	)
@@ -72,9 +75,9 @@ func main() {
 	cfg := NewDefaultConfig()
 	flag.StringVar(&cfg.AssetPrefix, "asset-prefix", cfg.AssetPrefix, "The URL path at which to host static assets.")
 	flag.StringVar(&cfg.DocumentRoot, "document-root", cfg.DocumentRoot, "The filesystem path from which static assets should be served.")
-	flag.StringVar(&cfg.UniverseUrl, "universe-url", cfg.UniverseUrl, "The URL where universe can be reached")
+	flag.StringVar(&cfg.UniverseURL, "universe-url", cfg.UniverseURL, "The URL where universe can be reached")
 	flag.StringVar(&cfg.VersionsRoot, "versions-root", cfg.VersionsRoot, "The filesystem path where downloaded versions are stored")
-	flag.StringVar(&cfg.MasterCountFile, "master-count-file", cfg.MasterCountFile, "The filesystem path to the file determening the master count")
+	flag.StringVar(&cfg.MasterCountFile, "master-count-file", cfg.MasterCountFile, "The filesystem path to the file determining the master count")
 	flag.Parse()
 	// Use systemd socket activation.
 	l, err := activation.Listeners()
@@ -129,10 +132,12 @@ func StaticHandler(urlpath, fspath string) http.Handler {
 	return http.StripPrefix(urlpath, http.FileServer(http.Dir(fspath)))
 }
 
+// NotImplementedHandler writes a HTTP Not Implemented response
 func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// UpdateHandler processes update requests
 func UpdateHandler(cfg Config) func(http.ResponseWriter, *http.Request) {
 	dcos := Dcos{
 		MasterCountLocation: cfg.MasterCountFile,
@@ -151,7 +156,7 @@ func UpdateHandler(cfg Config) func(http.ResponseWriter, *http.Request) {
 		return NotImplementedHandler
 	}
 
-	updateManager := NewUpdateManager(cfg.UniverseUrl, cfg.VersionsRoot)
+	updateManager := NewUpdateManager(cfg.UniverseURL, cfg.VersionsRoot)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)

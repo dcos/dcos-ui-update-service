@@ -27,6 +27,7 @@ type ListVersionRequest struct {
 	PackageName            string
 }
 
+// PackageDetailRequest is the request body sent to /package/describe
 type PackageDetailRequest struct {
 	PackageName    string
 	PackageVersion string

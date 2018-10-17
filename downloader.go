@@ -20,12 +20,15 @@ type ArchiveDownloader interface {
 	downloadAndUnpack(string, string) error
 }
 
+// Downloader is used to download a package from a URL and extract it to the filesystem
 type Downloader struct {
 	Client *http.Client
 	Fs     afero.Fs
 }
 
-// ExtractTarGzToDir extracts payload as a tar file, unzips each entry. It assumes that the tar file represents a directory and writes any file/directory within into dest.
+// ExtractTarGzToDir extracts payload as a tar file, unzips each entry.
+// It assumes that the tar file represents a directory and writes any
+// file/directory within into dest.
 func (d Downloader) ExtractTarGzToDir(dest string, payload []byte) error {
 	gzr, err := gzip.NewReader(bytes.NewReader(payload))
 	if err != nil {

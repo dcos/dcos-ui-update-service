@@ -22,6 +22,7 @@ func (l *ListVersionResponse) includesTargetVersion(version string) bool {
 	return len(l.Results[version]) > 0
 }
 
+// NewUpdateManager creates a new instance of UpdateManager
 func NewUpdateManager(universeURL, versionPath string) UpdateManager {
 	// TODO: write better clients
 	fs := afero.NewOsFs()
@@ -43,9 +44,9 @@ func NewUpdateManager(universeURL, versionPath string) UpdateManager {
 
 // LoadVersion downloads the given DC/OS UI version to the target directory.
 func (um *UpdateManager) LoadVersion(version string, targetDirectory string) error {
-	listVersionResp, err := um.Cosmos.listPackageVersions("dcos-ui")
-	if err != nil {
-		return fmt.Errorf("Could not reach the server: %#v", err)
+	listVersionResp, listErr := um.Cosmos.listPackageVersions("dcos-ui")
+	if listErr != nil {
+		return fmt.Errorf("Could not reach the server: %#v", listErr)
 	}
 
 	if !listVersionResp.includesTargetVersion(version) {
@@ -56,9 +57,9 @@ func (um *UpdateManager) LoadVersion(version string, targetDirectory string) err
 		return fmt.Errorf("%q is no directory", targetDirectory)
 	}
 
-	assets, err := um.Cosmos.getPackageAssets("dcos-ui", version)
-	if err != nil {
-		return errors.Wrap(err, "Could not reach the server")
+	assets, getAssetsErr := um.Cosmos.getPackageAssets("dcos-ui", version)
+	if getAssetsErr != nil {
+		return errors.Wrap(getAssetsErr, "Could not reach the server")
 	}
 
 	uiBundleName := "dcos-ui-bundle"
@@ -68,10 +69,8 @@ func (um *UpdateManager) LoadVersion(version string, targetDirectory string) err
 		return fmt.Errorf("Could not find asset with the name %q in %#v", uiBundleName, assets)
 	}
 
-	err = um.Loader.downloadAndUnpack(uiBundleURI, targetDirectory)
-
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("Could not load %q", uiBundleURI))
+	if umErr := um.Loader.downloadAndUnpack(uiBundleURI, targetDirectory); umErr != nil {
+		return errors.Wrap(umErr, fmt.Sprintf("Could not load %q", uiBundleURI))
 	}
 
 	return nil
@@ -86,6 +85,10 @@ func (um *UpdateManager) GetCurrentVersion() (string, error) {
 	}
 
 	files, err := afero.ReadDir(um.Fs, um.VersionPath)
+
+	if err != nil {
+		return "", fmt.Errorf("could not read files from verion path")
+	}
 
 	var dirs []string
 
@@ -132,7 +135,7 @@ func (um *UpdateManager) UpdateToVersion(version string) error {
 	// Removes old version directory
 	err = um.Fs.RemoveAll(um.VersionPath + "/" + currentVersion)
 	if err != nil {
-		return errors.Wrap(err, "Could not remove old verison")
+		return errors.Wrap(err, "Could not remove old version")
 	}
 
 	return nil
