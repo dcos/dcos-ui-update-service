@@ -11,7 +11,7 @@ watchTest: docker-image
 	$(call inDocker,rerun -v --test)
 
 .PHONY: test
-test: vet
+test: lint
 	$(call inDocker,go test -race -cover ./...)
 
 .PHONY: lint
