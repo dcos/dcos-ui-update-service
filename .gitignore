@@ -2,4 +2,4 @@ main
 coverage.txt
 coverage.xml
 build/
-docs-ui-update-service
+dcos-ui-update-service
