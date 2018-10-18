@@ -75,6 +75,25 @@ func TestCosmosListVersions(t *testing.T) {
 		}
 	})
 
+	t.Run("returns error if API call does not return OK", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			rw.WriteHeader(http.StatusNotFound)
+		}))
+		// Close the server when test finishes
+		defer server.Close()
+
+		cosmos := CosmosClient{
+			Client:      server.Client(),
+			UniverseURL: server.URL,
+		}
+
+		_, err := cosmos.listPackageVersions("dcos-ui")
+
+		if err == nil {
+			t.Fatalf("Expected error, got nil")
+		}
+	})
+
 	t.Run("returns error if no JSON is returned", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			io.WriteString(rw, "Not found")
@@ -168,6 +187,25 @@ func TestCosmosDetail(t *testing.T) {
 
 		if res != expected {
 			t.Fatalf("Expected %q as a result, got %q from %#v", expected, res, resp)
+		}
+	})
+
+	t.Run("returns error if API call does not return OK", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			rw.WriteHeader(http.StatusUnauthorized)
+		}))
+		// Close the server when test finishes
+		defer server.Close()
+
+		cosmos := CosmosClient{
+			Client:      server.Client(),
+			UniverseURL: server.URL,
+		}
+
+		_, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
+
+		if err == nil {
+			t.Fatalf("Expected error, got nil")
 		}
 	})
 

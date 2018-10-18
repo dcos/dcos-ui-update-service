@@ -14,23 +14,25 @@ import (
 type CosmosClient struct {
 	Client      *http.Client
 	UniverseURL string // maybe use url instead of string
+	UseAuth     bool
+	AuthToken   string
 }
 
 // ListVersionResponse is the parsed result of /package/list-versions requests
 type ListVersionResponse struct {
-	Results map[string]string
+	Results map[string]string `json:"results"`
 }
 
 // ListVersionRequest is the request body send to /package/list-versions
 type ListVersionRequest struct {
-	IncludePackageVersions bool
-	PackageName            string
+	IncludePackageVersions bool   `json:"includePackageVersions"`
+	PackageName            string `json:"packageName"`
 }
 
 // PackageDetailRequest is the request body sent to /package/describe
 type PackageDetailRequest struct {
-	PackageName    string
-	PackageVersion string
+	PackageName    string `json:"packageName"`
+	PackageVersion string `json:"packageVersion"`
 }
 
 // TODO: think about if we can use the roundtripper api to set the headers in an easier way
@@ -50,14 +52,21 @@ func (c *CosmosClient) listPackageVersions(packageName string) (*ListVersionResp
 	}
 	req.Header.Set("accept", "application/vnd.dcos.package.list-versions-response+json;charset=utf-8;version=v1")
 	req.Header.Set("content-type", "application/vnd.dcos.package.list-versions-request+json;charset=utf-8;version=v1")
+	if c.UseAuth {
+		req.Header.Set("authorization", "token="+c.AuthToken)
+	}
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-
-	var response ListVersionResponse
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("failed to query cosmos")
+	}
+	var response ListVersionResponse
+
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
 		return nil, err
@@ -79,11 +88,18 @@ func (c *CosmosClient) getPackageAssets(packageName string, packageVersion strin
 	}
 	req.Header.Set("accept", "application/vnd.dcos.package.describe-response+json;charset=utf-8;version=v3")
 	req.Header.Set("content-type", "application/vnd.dcos.package.describe-request+json;charset=UTF-8;version=v1")
+	if c.UseAuth {
+		req.Header.Set("authorization", "token="+c.AuthToken)
+	}
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("failed to query cosmos")
+	}
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("Could not load response body")

@@ -22,8 +22,10 @@ type ArchiveDownloader interface {
 
 // Downloader is used to download a package from a URL and extract it to the filesystem
 type Downloader struct {
-	Client *http.Client
-	Fs     afero.Fs
+	Client    *http.Client
+	Fs        afero.Fs
+	UseAuth   bool
+	AuthToken string
 }
 
 // ExtractTarGzToDir extracts payload as a tar file, unzips each entry.
@@ -86,10 +88,13 @@ func (d Downloader) ExtractTarGzToDir(dest string, payload []byte) error {
 }
 
 func (d *Downloader) downloadAndUnpack(fileURL string, targetDirectory string) error {
-	// TODO: we most probably need to set some headers e.g. for auth
 	req, err := http.NewRequest("GET", fileURL, nil)
 	if err != nil {
 		return err
+	}
+	req.Header.Set("content-type", "application/octet-stream")
+	if d.UseAuth {
+		req.Header.Set("Authorization", "token="+d.AuthToken)
 	}
 
 	resp, err := d.Client.Do(req)
@@ -97,6 +102,9 @@ func (d *Downloader) downloadAndUnpack(fileURL string, targetDirectory string) e
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to download package %v", resp.StatusCode)
+	}
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

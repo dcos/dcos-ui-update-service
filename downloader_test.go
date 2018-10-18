@@ -42,6 +42,31 @@ func TestDownloader(t *testing.T) {
 			}
 		})
 
+		t.Run("should throw if server cannot dowload file", func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				rw.WriteHeader(http.StatusForbidden)
+			}))
+			// Close the server when test finishes
+			defer server.Close()
+			appFS := afero.NewMemMapFs()
+
+			loader := Downloader{
+				Client: server.Client(),
+				Fs:     appFS,
+			}
+
+			dest, err := ioutil.TempDir("", "downloader_test")
+			if err != nil {
+				t.Fatalf("Could not create a tmp dir")
+			}
+
+			err = loader.downloadAndUnpack("http://unknown", dest)
+
+			if err == nil {
+				t.Fatalf("Should have thrown an error, got none")
+			}
+		})
+
 		t.Run("should throw if server errors", func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				http.ServeFile(rw, req, "fixtures/release.tar.gz")

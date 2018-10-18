@@ -23,18 +23,23 @@ func (l *ListVersionResponse) includesTargetVersion(version string) bool {
 }
 
 // NewUpdateManager creates a new instance of UpdateManager
-func NewUpdateManager(universeURL, versionPath string) UpdateManager {
+func NewUpdateManager(universeURL, versionPath, authToken string) UpdateManager {
 	// TODO: write better clients
 	fs := afero.NewOsFs()
+	useAuth := len(authToken) > 0
 
 	return UpdateManager{
 		Cosmos: CosmosClient{
 			Client:      &http.Client{},
 			UniverseURL: universeURL,
+			UseAuth:     useAuth,
+			AuthToken:   authToken,
 		},
 		Loader: Downloader{
-			Client: &http.Client{},
-			Fs:     fs,
+			Client:    &http.Client{},
+			Fs:        fs,
+			UseAuth:   useAuth,
+			AuthToken: authToken,
 		},
 		UniverseURL: universeURL,
 		VersionPath: versionPath,
@@ -98,6 +103,10 @@ func (um *UpdateManager) GetCurrentVersion() (string, error) {
 		}
 	}
 
+	if len(dirs) == 0 {
+		return "", fmt.Errorf("Detected no current version")
+	}
+
 	if len(dirs) != 1 {
 		return "", fmt.Errorf("Detected more than one directory: %#v", dirs)
 	}
@@ -129,6 +138,8 @@ func (um *UpdateManager) UpdateToVersion(version string) error {
 	// Update to next version
 	err = um.LoadVersion(version, targetDir)
 	if err != nil {
+		// Install failed delete the targetDir
+		um.Fs.RemoveAll(targetDir)
 		return errors.Wrap(err, "Could not load new version")
 	}
 

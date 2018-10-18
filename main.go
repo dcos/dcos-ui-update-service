@@ -25,6 +25,8 @@ type Config struct {
 
 	// The filesystem path where the file determining the master count is
 	MasterCountFile string
+
+	APIToken string
 }
 
 // NewConfig returns an instance of Config to be used by the Application
@@ -37,6 +39,7 @@ func NewConfig(assetPrefix, documentRoot, universeURL, versionsRoot, masterCount
 		universeURL,
 		versionsRoot,
 		masterCountFile,
+		"",
 	}
 }
 
@@ -78,6 +81,12 @@ func main() {
 	flag.StringVar(&cfg.UniverseURL, "universe-url", cfg.UniverseURL, "The URL where universe can be reached")
 	flag.StringVar(&cfg.VersionsRoot, "versions-root", cfg.VersionsRoot, "The filesystem path where downloaded versions are stored")
 	flag.StringVar(&cfg.MasterCountFile, "master-count-file", cfg.MasterCountFile, "The filesystem path to the file determining the master count")
+	flag.StringVar(
+		&cfg.APIToken, 
+		"api-token", 
+		cfg.APIToken, 
+		"DC/OS API token to use for authentication, this should only be needed for local development."
+	)
 	flag.Parse()
 	// Use systemd socket activation.
 	l, err := activation.Listeners()
@@ -156,7 +165,7 @@ func UpdateHandler(cfg Config) func(http.ResponseWriter, *http.Request) {
 		return NotImplementedHandler
 	}
 
-	updateManager := NewUpdateManager(cfg.UniverseURL, cfg.VersionsRoot)
+	updateManager := NewUpdateManager(cfg.UniverseURL, cfg.VersionsRoot, cfg.APIToken)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
