@@ -28,7 +28,8 @@
   ],
   "Exclude": [
     ".*_test.go",
-    "exported \\w+ (\\S*['.]*)([a-zA-Z'.*]*) should have comment or be unexported"
+    "exported \\w+ (\\S*['.]*)([a-zA-Z'.*]*) should have comment or be unexported",
+    "^../pkg/.*"
   ],
   "Vendor": true
 }
