@@ -14,10 +14,12 @@ func listen() (net.Listener, error) {
 	return net.Listen("tcp", "127.0.0.1:0")
 }
 
-func testConfig() Config {
+func testConfig() *Config {
 	cfg := NewDefaultConfig()
+	cfg.ClusterUIPath = "./public"
+	LoadUIHandler("/static/", &cfg)
 	cfg.MasterCountFile = "./fixtures/single-master"
-	return cfg
+	return &cfg
 }
 
 func TestApplication(t *testing.T) {
@@ -36,10 +38,10 @@ func TestApplication(t *testing.T) {
 	// to stop running and return an error from Run().
 	defer l.Close()
 	// Start a test server.
-	cfg := testConfig()
-	cfg.DocumentRoot = "./testdata/docroot/public"
+	config := testConfig()
+	(*(*config).UIHandler).UpdateDocumentRoot("./testdata/docroot/public")
 	go func() {
-		appDoneCh <- Run(cfg, l)
+		appDoneCh <- Run(config, l)
 	}()
 	// Yay! we're finally ready to perform requests against our server.
 	addr := "http://" + l.Addr().String()
@@ -56,7 +58,8 @@ func TestApplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exp, err := ioutil.ReadFile(filepath.Join(cfg.DocumentRoot, "test.html"))
+	documentRoot := (*(*config).UIHandler).GetDocumentRoot()
+	exp, err := ioutil.ReadFile(filepath.Join(documentRoot, "test.html"))
 	if err != nil {
 		t.Fatal(err)
 	}
