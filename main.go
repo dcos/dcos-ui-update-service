@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/coreos/go-systemd/activation"
 	"github.com/gorilla/mux"
 )
 
@@ -54,19 +55,40 @@ func main() {
 	flag.StringVar(&cfg.AssetPrefix, "asset-prefix", cfg.AssetPrefix, "The URL path at which to host static assets.")
 	flag.StringVar(&cfg.DocumentRoot, "document-root", cfg.DocumentRoot, "The filesystem path from which static assets should be served.")
 	flag.Parse()
-	// Start listening on socket.
-	l, err := net.Listen(listenNet, listenAddr)
+	// Use systemd socket activation.
+	l, err := activation.Listeners()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot listen for %q connections at address %q: %s", listenNet, listenAddr, err.Error())
 		os.Exit(1)
 	}
-	// Run application.
-	if err := Run(cfg, l); err != nil {
+	if len(l) == 1 {
+		// Run application
+		if err := Run(cfg, l[0]); err != nil {
+			fmt.Fprintf(os.Stderr, "Application error: %s", err.Error())
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Start socket
+	if err := StartSocket(cfg, listenNet, listenAddr); err != nil {
 		fmt.Fprintf(os.Stderr, "Application error: %s", err.Error())
 		os.Exit(1)
 	}
 }
 
+// StartSocket if systemd did not provide a socket
+func StartSocket(cfg Config, listenNet string, listenAddr string) error {
+	l, err := net.Listen(listenNet, listenAddr)
+	fmt.Fprintf(os.Stderr, "Starting new socket using net: %q and Addr: %q\n", listenNet, listenAddr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Cannot listen for %q connections at address %q: %s \n", listenNet, listenAddr, err.Error())
+		os.Exit(1)
+	}
+	return Run(cfg, l)
+}
+
+// Run the server and listen to provided address
 func Run(cfg Config, l net.Listener) error {
 	r := newRouter(cfg.AssetPrefix, cfg.DocumentRoot)
 	http.Handle("/", r)
@@ -80,10 +102,12 @@ func newRouter(assetPrefix, documentRoot string) *mux.Router {
 	return r
 }
 
+// StaticHandler handles requests for static files
 func StaticHandler(urlpath, fspath string) http.Handler {
 	return http.StripPrefix(urlpath, http.FileServer(http.Dir(fspath)))
 }
 
+// APIHandler handles api calls
 func APIHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
