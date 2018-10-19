@@ -171,6 +171,7 @@ func newRouter(cfg *Config) *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/", NotImplementedHandler)
 	r.HandleFunc("/api/v1/update/{version}", UpdateHandler(cfg))
+	r.HandleFunc("/api/v1/reset/", ResetHandler(cfg))
 	r.PathPrefix((*(*cfg).UIHandler).GetAssetPrefix()).Handler((*cfg).UIHandler)
 	return r
 }
@@ -216,6 +217,32 @@ func UpdateHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// ResetHandler processes reset requests
+func ResetHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		method := r.Method
+		if method != "DELETE" {
+			w.WriteHeader(http.StatusNotImplemented)
+			return
+		}
+		// verify we aren't currently serving pre-bundled version
+		if (*cfg).ClusterUIPath == (*(*cfg).UIHandler).GetDocumentRoot() {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		err := (*(*cfg).UIHandler).UpdateDocumentRoot((*cfg).ClusterUIPath)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = (*(*cfg).UpdateManager).ResetVersion()
+		if err != nil {
+			// TODO: Log we failed to remove latest
+		}
 		w.WriteHeader(http.StatusOK)
 	}
 }

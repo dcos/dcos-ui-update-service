@@ -638,7 +638,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		}
 	})
 
-	t.Run("returns error  if you update to the current version", func(t *testing.T) {
+	t.Run("returns error if you can't update the file server to the current version", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			path := req.URL.Path
 			if path == "/package/list-versions" {
@@ -735,6 +735,97 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 
 		if !oldVersionExists || err != nil {
 			t.Fatalf("Expected old directoy to be removed, got %t, %#v", oldVersionExists, err)
+		}
+	})
+}
+
+func TestUpdateManagerResetVersion(t *testing.T) {
+	t.Run("returns error if cant get current version", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
+		// Close the server when test finishes
+		defer server.Close()
+		fs := afero.NewMemMapFs()
+
+		loader := UpdateManager{
+			Cosmos: CosmosClient{
+				Client:      server.Client(),
+				UniverseURL: server.URL,
+			},
+			Loader: Downloader{
+				Client: server.Client(),
+			},
+			VersionPath: "/ui-versions",
+			Fs:          fs,
+		}
+
+		fs.MkdirAll("/ui-versions/2.25.3", 0755)
+		fs.MkdirAll("/ui-versions/2.25.2", 0755)
+		err := loader.ResetVersion()
+
+		if err == nil {
+			t.Fatalf("Expected error, got nil")
+		}
+	})
+
+	t.Run("returns nil if there is not a current version", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
+		// Close the server when test finishes
+		defer server.Close()
+		fs := afero.NewMemMapFs()
+
+		loader := UpdateManager{
+			Cosmos: CosmosClient{
+				Client:      server.Client(),
+				UniverseURL: server.URL,
+			},
+			Loader: Downloader{
+				Client: server.Client(),
+			},
+			VersionPath: "/ui-versions",
+			Fs:          fs,
+		}
+
+		fs.MkdirAll("/ui-versions", 0755)
+		err := loader.ResetVersion()
+
+		if err != nil {
+			t.Errorf("Expect no error, but got error %v", err)
+		}
+	})
+
+	t.Run("returns error if fails to remove current version", func(t *testing.T) {
+		// TODO: Can we test this?
+	})
+
+	t.Run("return nil if current version is removed", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
+		// Close the server when test finishes
+		defer server.Close()
+		fs := afero.NewMemMapFs()
+
+		loader := UpdateManager{
+			Cosmos: CosmosClient{
+				Client:      server.Client(),
+				UniverseURL: server.URL,
+			},
+			Loader: Downloader{
+				Client: server.Client(),
+			},
+			VersionPath: "/ui-versions",
+			Fs:          fs,
+		}
+		currentVersionPath := "/ui-versions/2.25.3"
+		fs.MkdirAll(currentVersionPath, 0755)
+		err := loader.ResetVersion()
+
+		if err != nil {
+			t.Fatalf("Expected nil, got an error %#v", err)
+		}
+
+		versionExists, err := afero.DirExists(fs, currentVersionPath)
+
+		if versionExists || err != nil {
+			t.Errorf("Expected version dir to not exist, got %t, %#v", versionExists, err)
 		}
 	})
 }

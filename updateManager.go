@@ -175,3 +175,21 @@ func (um *UpdateManager) UpdateToVersion(version string, fileServer UIFileServer
 
 	return nil
 }
+
+func (um *UpdateManager) ResetVersion() error {
+	currentVersion, err := um.GetCurrentVersion()
+
+	if err != nil {
+		return errors.Wrap(err, "Could not get current version")
+	}
+
+	if len(currentVersion) == 0 {
+		return nil
+	}
+
+	err = um.Fs.RemoveAll(path.Join(um.VersionPath, currentVersion))
+	if err != nil {
+		return errors.Wrap(err, "Could not remove current version")
+	}
+	return nil
+}

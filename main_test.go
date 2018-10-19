@@ -104,6 +104,7 @@ func TestRouter(t *testing.T) {
 			{"returns with 200 on static", "/static/", http.StatusOK},
 			{"returns with 501 on api/v1", "/api/v1/", http.StatusNotImplemented},
 			{"returns with 404 on api", "/api", http.StatusNotFound},
+			{"returns with 501 on GET api/v1/reset", "/api/v1/reset/", http.StatusNotImplemented},
 		}
 
 		for _, tt := range testCases {
