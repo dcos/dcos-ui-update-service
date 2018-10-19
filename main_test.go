@@ -17,6 +17,8 @@ func listen() (net.Listener, error) {
 func testConfig() *Config {
 	cfg := NewDefaultConfig()
 	cfg.ClusterUIPath = "./public"
+	cfg.VersionsRoot = "./testdata/empty-versions"
+	LoadUpdateManager(&cfg)
 	LoadUIHandler("/static/", &cfg)
 	cfg.MasterCountFile = "./fixtures/single-master"
 	return &cfg
@@ -121,6 +123,39 @@ func TestRouter(t *testing.T) {
 				}
 
 			})
+		}
+	})
+}
+
+func TestLoadUIHandler(t *testing.T) {
+	t.Run("sets ClusterUIPath as document root if no current version", func(t *testing.T) {
+		cfg := NewDefaultConfig()
+		cfg.ClusterUIPath = "./public"
+		cfg.VersionsRoot = "./testdata/empty-versions"
+		LoadUpdateManager(&cfg)
+		LoadUIHandler("/static/", &cfg)
+
+		docRoot := (*cfg.UIHandler).GetDocumentRoot()
+		expected := cfg.ClusterUIPath
+		if docRoot != expected {
+			t.Errorf("ui handler documentroot set to %v, expected %v", docRoot, expected)
+		}
+	})
+
+	t.Run("sets ClusterUIPath as document root if no current version", func(t *testing.T) {
+		cfg := NewDefaultConfig()
+		cfg.ClusterUIPath = "./public"
+		cfg.VersionsRoot = "./testdata/one-version"
+		LoadUpdateManager(&cfg)
+		LoadUIHandler("/static/", &cfg)
+
+		docRoot := (*cfg.UIHandler).GetDocumentRoot()
+		expected, err := (*cfg.UpdateManager).GetPathToCurrentVersion()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if docRoot != expected {
+			t.Errorf("ui handler documentroot set to %v, expected %v", docRoot, expected)
 		}
 	})
 }

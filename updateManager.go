@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
@@ -104,7 +105,7 @@ func (um *UpdateManager) GetCurrentVersion() (string, error) {
 	}
 
 	if len(dirs) == 0 {
-		return "", fmt.Errorf("Detected no current version")
+		return "", nil
 	}
 
 	if len(dirs) != 1 {
@@ -113,6 +114,21 @@ func (um *UpdateManager) GetCurrentVersion() (string, error) {
 
 	// by looking at the dirs for now
 	return dirs[0], nil
+}
+
+// GetPathToCurrentVersion return the filesystem path to the current UI version
+// or returns an error is the current version cannot be determined
+func (um *UpdateManager) GetPathToCurrentVersion() (string, error) {
+	currentVersion, err := um.GetCurrentVersion()
+	if err != nil {
+		return "", err
+	}
+	if len(currentVersion) == 0 {
+		return "", fmt.Errorf("there is not current version available")
+	}
+
+	versionPath := path.Join(um.VersionPath, currentVersion)
+	return versionPath, nil
 }
 
 // UpdateToVersion updates the ui to the given version
@@ -124,11 +140,11 @@ func (um *UpdateManager) UpdateToVersion(version string) error {
 		return errors.Wrap(err, "Could not get current version")
 	}
 
-	if currentVersion == version {
+	if len(currentVersion) > 0 && currentVersion == version {
 		return fmt.Errorf("Trying to update to the same version")
 	}
 
-	targetDir := um.VersionPath + "/" + version
+	targetDir := path.Join(um.VersionPath, version)
 	// Create directory for next version
 	err = um.Fs.MkdirAll(targetDir, 0755)
 	if err != nil {
@@ -142,11 +158,14 @@ func (um *UpdateManager) UpdateToVersion(version string) error {
 		um.Fs.RemoveAll(targetDir)
 		return errors.Wrap(err, "Could not load new version")
 	}
+	// TODO: Update document root for ui handler to targetDir
 
-	// Removes old version directory
-	err = um.Fs.RemoveAll(um.VersionPath + "/" + currentVersion)
-	if err != nil {
-		return errors.Wrap(err, "Could not remove old version")
+	if len(currentVersion) > 0 {
+		// Removes old version directory
+		err = um.Fs.RemoveAll(path.Join(um.VersionPath, currentVersion))
+		if err != nil {
+			return errors.Wrap(err, "Could not remove old version")
+		}
 	}
 
 	return nil

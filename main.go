@@ -31,6 +31,8 @@ type Config struct {
 	APIToken string
 
 	UIHandler *UIFileHandler
+
+	UpdateManager *UpdateManager
 }
 
 // NewConfig returns an instance of Config to be used by the Application
@@ -46,6 +48,7 @@ func NewConfig(listenNet, listenAddress, universeURL, clusterUIPath, versionsRoo
 		versionsRoot,
 		masterCountFile,
 		"",
+		nil,
 		nil,
 	}
 }
@@ -73,8 +76,17 @@ func NewDefaultConfig() Config {
 	)
 }
 
+func LoadUpdateManager(cfg *Config) {
+	updateManager := NewUpdateManager((*cfg).UniverseURL, (*cfg).VersionsRoot, (*cfg).APIToken)
+	(*cfg).UpdateManager = &updateManager
+}
+
 func LoadUIHandler(assetPrefix string, cfg *Config) {
 	documentRoot := (*cfg).ClusterUIPath
+	currentVersionPath, err := (*(*cfg).UpdateManager).GetPathToCurrentVersion()
+	if err == nil {
+		documentRoot = currentVersionPath
+	}
 	uiHandler := NewUIFileHandler(assetPrefix, documentRoot)
 	(*cfg).UIHandler = &uiHandler
 }
@@ -102,6 +114,7 @@ func loadConfig() *Config {
 	)
 	flag.Parse()
 
+	LoadUpdateManager(&cfg)
 	LoadUIHandler(assetPrefix, &cfg)
 
 	return &cfg
@@ -186,8 +199,6 @@ func UpdateHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
 		return NotImplementedHandler
 	}
 
-	updateManager := NewUpdateManager((*cfg).UniverseURL, (*cfg).VersionsRoot, (*cfg).APIToken)
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		version := vars["version"]
@@ -197,7 +208,7 @@ func UpdateHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusNotAcceptable)
 			return
 		}
-		err := updateManager.UpdateToVersion(version)
+		err := (*(*cfg).UpdateManager).UpdateToVersion(version)
 
 		if err != nil {
 			// This returns locked on every error, it would be better if we would return a boolean if the process is locked
