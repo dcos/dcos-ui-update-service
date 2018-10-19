@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"strings"
 	"testing"
 
@@ -397,6 +399,23 @@ func TestUpdateManagerGetPathToCurrentVersion(t *testing.T) {
 	})
 }
 
+type MockFileServer struct {
+	DocumentRoot string
+	Error        error
+}
+
+func (mfs *MockFileServer) UpdateDocumentRoot(documentRoot string) error {
+	if mfs.Error != nil {
+		return mfs.Error
+	}
+	mfs.DocumentRoot = documentRoot
+	return nil
+}
+
+func (mfs *MockFileServer) GetDocumentRoot() string {
+	return mfs.DocumentRoot
+}
+
 func TestUpdateManagerUpdateToVersion(t *testing.T) {
 	t.Run("creates update in new dir when no current version exists", func(t *testing.T) {
 		urlChan := make(chan string, 3) // because three requests will be made
@@ -432,15 +451,20 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			VersionPath: versionsPath,
 			Fs:          fs,
 		}
+		mfs := MockFileServer{
+			DocumentRoot: "/opt/public",
+			Error:        nil,
+		}
 
 		fs.MkdirAll(versionsPath, 0755)
-		err := loader.UpdateToVersion("2.25.2")
+		err := loader.UpdateToVersion("2.25.2", &mfs)
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %#v", err)
 		}
 
-		newVersionExists, err := afero.DirExists(fs, versionsPath+"/2.25.2")
+		newVersionPath := path.Join(versionsPath, "2.25.2")
+		newVersionExists, err := afero.DirExists(fs, newVersionPath)
 
 		if !newVersionExists || err != nil {
 			t.Fatalf("Expected new directoy to exist, got %t, %#v", newVersionExists, err)
@@ -461,6 +485,11 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		onlyNewVersionExists := len(versionDirs) == 1
 		if !onlyNewVersionExists {
 			t.Errorf("Expected only new version directory to exist")
+		}
+
+		fileServerUpdated := mfs.GetDocumentRoot() == newVersionPath
+		if !fileServerUpdated {
+			t.Errorf("Expected new version directory to be set as document root")
 		}
 	})
 
@@ -491,9 +520,13 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			VersionPath: "/ui-versions",
 			Fs:          fs,
 		}
+		mfs := MockFileServer{
+			DocumentRoot: "/opt/public",
+			Error:        nil,
+		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
-		err := loader.UpdateToVersion("2.25.2")
+		err := loader.UpdateToVersion("2.25.2", &mfs)
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -527,9 +560,13 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			VersionPath: "/ui-versions",
 			Fs:          fs,
 		}
+		mfs := MockFileServer{
+			DocumentRoot: "/opt/public",
+			Error:        nil,
+		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
-		err := loader.UpdateToVersion("2.25.2")
+		err := loader.UpdateToVersion("2.25.2", &mfs)
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -576,9 +613,13 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			VersionPath: versionsPath,
 			Fs:          fs,
 		}
+		mfs := MockFileServer{
+			DocumentRoot: "/opt/public",
+			Error:        nil,
+		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
-		err := loader.UpdateToVersion("2.25.2")
+		err := loader.UpdateToVersion("2.25.2", &mfs)
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %#v", err)
@@ -597,7 +638,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		}
 	})
 
-	t.Run("throws an error if you update to the current version", func(t *testing.T) {
+	t.Run("returns error  if you update to the current version", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			path := req.URL.Path
 			if path == "/package/list-versions" {
@@ -625,12 +666,75 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			VersionPath: versionsPath,
 			Fs:          fs,
 		}
+		mfs := MockFileServer{
+			DocumentRoot: "/opt/public",
+			Error:        nil,
+		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
-		err := loader.UpdateToVersion("2.25.1")
+		err := loader.UpdateToVersion("2.25.1", &mfs)
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
+		}
+	})
+
+	t.Run("returns error if file server fails to update", func(t *testing.T) {
+		urlChan := make(chan string, 3) // because three requests will be made
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			baseURL := <-urlChan
+			path := req.URL.Path
+			if path == "/package/list-versions" {
+				io.WriteString(rw, defaultListResponse)
+			} else if path == "/package/describe" {
+				io.WriteString(rw, strings.Replace(defaultDescribeResponse, "https://frontend-elasticl-11uu7xp48vh9c-805473783.eu-central-1.elb.amazonaws.com", baseURL, -1))
+			} else {
+				http.ServeFile(rw, req, "fixtures/release.tar.gz")
+			}
+		}))
+		// because three requests will be made
+		urlChan <- server.URL
+		urlChan <- server.URL
+		urlChan <- server.URL
+		// Close the server when test finishes
+		defer server.Close()
+		fs := afero.NewMemMapFs()
+		versionsPath := "/ui-versions"
+
+		loader := UpdateManager{
+			Cosmos: CosmosClient{
+				Client:      server.Client(),
+				UniverseURL: server.URL,
+			},
+			Loader: Downloader{
+				Client: server.Client(),
+				Fs:     fs,
+			},
+			VersionPath: versionsPath,
+			Fs:          fs,
+		}
+		mfs := MockFileServer{
+			DocumentRoot: "/ui-versions/2.25.1",
+			Error:        fmt.Errorf("oh no bad stuff"),
+		}
+
+		fs.MkdirAll("/ui-versions/2.25.1", 0755)
+		err := loader.UpdateToVersion("2.25.2", &mfs)
+
+		if err == nil {
+			t.Fatalf("Expected no error, got %#v", err)
+		}
+
+		newVersionExists, err := afero.DirExists(fs, versionsPath+"/2.25.2")
+
+		if newVersionExists || err != nil {
+			t.Fatalf("Expected new directoy to be removed, got %t, %#v", newVersionExists, err)
+		}
+
+		oldVersionExists, err := afero.DirExists(fs, versionsPath+"/2.25.1")
+
+		if !oldVersionExists || err != nil {
+			t.Fatalf("Expected old directoy to be removed, got %t, %#v", oldVersionExists, err)
 		}
 	})
 }

@@ -208,7 +208,7 @@ func UpdateHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusNotAcceptable)
 			return
 		}
-		err := (*(*cfg).UpdateManager).UpdateToVersion(version)
+		err := (*(*cfg).UpdateManager).UpdateToVersion(version, (*cfg).UIHandler)
 
 		if err != nil {
 			// This returns locked on every error, it would be better if we would return a boolean if the process is locked

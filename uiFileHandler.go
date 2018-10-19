@@ -11,6 +11,11 @@ type UIFileHandler struct {
 	fileHandler  http.Handler
 }
 
+type UIFileServer interface {
+	GetDocumentRoot() string
+	UpdateDocumentRoot(documentRoot string) error
+}
+
 func createFileHandler(assetPrefix, documentRoot string) http.Handler {
 	return http.StripPrefix(assetPrefix, http.FileServer(http.Dir(documentRoot)))
 }

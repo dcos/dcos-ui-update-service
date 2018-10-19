@@ -132,7 +132,7 @@ func (um *UpdateManager) GetPathToCurrentVersion() (string, error) {
 }
 
 // UpdateToVersion updates the ui to the given version
-func (um *UpdateManager) UpdateToVersion(version string) error {
+func (um *UpdateManager) UpdateToVersion(version string, fileServer UIFileServer) error {
 	// Find out which version we currently have
 	currentVersion, err := um.GetCurrentVersion()
 
@@ -158,7 +158,12 @@ func (um *UpdateManager) UpdateToVersion(version string) error {
 		um.Fs.RemoveAll(targetDir)
 		return errors.Wrap(err, "Could not load new version")
 	}
-	// TODO: Update document root for ui handler to targetDir
+	err = fileServer.UpdateDocumentRoot(targetDir)
+	if err != nil {
+		// Swap to new version failed, abort update
+		um.Fs.RemoveAll(targetDir)
+		return errors.Wrap(err, "Could not load new version")
+	}
 
 	if len(currentVersion) > 0 {
 		// Removes old version directory
