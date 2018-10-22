@@ -25,14 +25,14 @@ func makeAppState(versionsRoot string) *ApplicationState {
 	cfg.MasterCountFile = "./fixtures/single-master"
 
 	um := LoadUpdateManager(&cfg)
-	uiHandler := LoadUIHandler("/static/", &cfg, um)
+	uiHandler := LoadUIHandler(&cfg, um)
 
-	state := ApplicationState{
+	state := &ApplicationState{
 		Config:        &cfg,
 		UpdateManager: um,
 		UIHandler:     uiHandler,
 	}
-	return &state
+	return state
 }
 
 func TestApplication(t *testing.T) {
@@ -115,7 +115,7 @@ func TestRouter(t *testing.T) {
 			{"returns with 200 on static", "/static/", http.StatusOK},
 			{"returns with 501 on api/v1", "/api/v1/", http.StatusNotImplemented},
 			{"returns with 404 on api", "/api", http.StatusNotFound},
-			{"returns with 501 on GET api/v1/reset", "/api/v1/reset/", http.StatusNotImplemented},
+			{"returns with 405 on GET api/v1/reset", "/api/v1/reset/", http.StatusMethodNotAllowed},
 		}
 
 		for _, tt := range testCases {

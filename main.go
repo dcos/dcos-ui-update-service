@@ -19,6 +19,8 @@ type Config struct {
 
 	UniverseURL string
 
+	StaticAssetPrefix string
+
 	// The filesystem path where the cluster pre-bundled UI is stored
 	ClusterUIPath string
 
@@ -40,7 +42,7 @@ type ApplicationState struct {
 }
 
 // NewConfig returns an instance of Config to be used by the Application
-func NewConfig(listenNet, listenAddress, universeURL, clusterUIPath, versionsRoot, masterCountFile string) Config {
+func NewConfig(listenNet, listenAddress, universeURL, assetPrefix, clusterUIPath, versionsRoot, masterCountFile string) Config {
 
 	// Don't use keyed literals so we get errors at compile time when new
 	// config fields get added.
@@ -48,6 +50,7 @@ func NewConfig(listenNet, listenAddress, universeURL, clusterUIPath, versionsRoo
 		listenNet,
 		listenAddress,
 		universeURL,
+		assetPrefix,
 		clusterUIPath,
 		versionsRoot,
 		masterCountFile,
@@ -72,6 +75,7 @@ func NewDefaultConfig() Config {
 		defaultListenNet,
 		defaultListenAddr,
 		defaultUniverseURL,
+		defaultAssetPrefix,
 		defaultClusterUIPath,
 		defaultVersionsRoot,
 		defaultMasterCountFile,
@@ -83,19 +87,18 @@ func LoadUpdateManager(cfg *Config) *UpdateManager {
 	return &updateManager
 }
 
-func LoadUIHandler(assetPrefix string, cfg *Config, um *UpdateManager) *UIFileHandler {
+func LoadUIHandler(cfg *Config, um *UpdateManager) *UIFileHandler {
 	documentRoot := cfg.ClusterUIPath
 	currentVersionPath, err := um.GetPathToCurrentVersion()
 	if err == nil {
 		documentRoot = currentVersionPath
 	}
-	uiHandler := NewUIFileHandler(assetPrefix, documentRoot)
+	uiHandler := NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot)
 	return &uiHandler
 }
 
 func setupApplication() *ApplicationState {
 	cfg := NewDefaultConfig()
-	assetPrefix := defaultAssetPrefix
 	flag.StringVar(
 		&cfg.ListenNetProtocol,
 		"listen-net",
@@ -103,7 +106,7 @@ func setupApplication() *ApplicationState {
 		"The transport type on which to listen for connections. May be one of 'tcp', 'unix'.",
 	)
 	flag.StringVar(&cfg.ListenNetAddress, "listen-addr", cfg.ListenNetAddress, "The network address at which to listen for connections.")
-	flag.StringVar(&assetPrefix, "asset-prefix", assetPrefix, "The URL path at which to host static assets.")
+	flag.StringVar(&cfg.StaticAssetPrefix, "asset-prefix", cfg.StaticAssetPrefix, "The URL path at which to host static assets.")
 	flag.StringVar(&cfg.UniverseURL, "universe-url", cfg.UniverseURL, "The URL where universe can be reached")
 	flag.StringVar(&cfg.ClusterUIPath, "default-ui-path", cfg.ClusterUIPath, "The filesystem path to serve the default UI from (pre-bundled).")
 	flag.StringVar(&cfg.VersionsRoot, "versions-root", cfg.VersionsRoot, "The filesystem path where downloaded versions are stored")
@@ -117,15 +120,15 @@ func setupApplication() *ApplicationState {
 	flag.Parse()
 
 	updateManager := LoadUpdateManager(&cfg)
-	uiHandler := LoadUIHandler(assetPrefix, &cfg, updateManager)
+	uiHandler := LoadUIHandler(&cfg, updateManager)
 
-	state := ApplicationState{
+	state := &ApplicationState{
 		Config:        &cfg,
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
 	}
 
-	return &state
+	return state
 }
 
 // TODO: think about client timeouts https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
@@ -182,7 +185,7 @@ func newRouter(state *ApplicationState) *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/", NotImplementedHandler)
 	r.HandleFunc("/api/v1/update/{version}", UpdateHandler(state))
-	r.HandleFunc("/api/v1/reset/", ResetHandler(state))
+	r.HandleFunc("/api/v1/reset/", ResetHandler(state)).Methods("DELETE")
 	r.PathPrefix(assetPrefix).Handler(state.UIHandler)
 	return r
 }
@@ -235,11 +238,6 @@ func UpdateHandler(state *ApplicationState) func(http.ResponseWriter, *http.Requ
 // ResetHandler processes reset requests
 func ResetHandler(state *ApplicationState) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		method := r.Method
-		if method != "DELETE" {
-			w.WriteHeader(http.StatusNotImplemented)
-			return
-		}
 		// verify we aren't currently serving pre-bundled version
 		if state.Config.ClusterUIPath == state.UIHandler.GetDocumentRoot() {
 			w.WriteHeader(http.StatusOK)
