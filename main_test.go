@@ -14,14 +14,25 @@ func listen() (net.Listener, error) {
 	return net.Listen("tcp", "127.0.0.1:0")
 }
 
-func testConfig() *Config {
+func testAppState() *ApplicationState {
+	return makeAppState("./testdata/empty-versions")
+}
+
+func makeAppState(versionsRoot string) *ApplicationState {
 	cfg := NewDefaultConfig()
 	cfg.ClusterUIPath = "./public"
-	cfg.VersionsRoot = "./testdata/empty-versions"
-	LoadUpdateManager(&cfg)
-	LoadUIHandler("/static/", &cfg)
+	cfg.VersionsRoot = versionsRoot
 	cfg.MasterCountFile = "./fixtures/single-master"
-	return &cfg
+
+	um := LoadUpdateManager(&cfg)
+	uiHandler := LoadUIHandler("/static/", &cfg, um)
+
+	state := ApplicationState{
+		Config:        &cfg,
+		UpdateManager: um,
+		UIHandler:     uiHandler,
+	}
+	return &state
 }
 
 func TestApplication(t *testing.T) {
@@ -40,10 +51,10 @@ func TestApplication(t *testing.T) {
 	// to stop running and return an error from Run().
 	defer l.Close()
 	// Start a test server.
-	config := testConfig()
-	(*(*config).UIHandler).UpdateDocumentRoot("./testdata/docroot/public")
+	appState := testAppState()
+	appState.UIHandler.UpdateDocumentRoot("./testdata/docroot/public")
 	go func() {
-		appDoneCh <- Run(config, l)
+		appDoneCh <- Run(appState, l)
 	}()
 	// Yay! we're finally ready to perform requests against our server.
 	addr := "http://" + l.Addr().String()
@@ -60,7 +71,7 @@ func TestApplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	documentRoot := (*(*config).UIHandler).GetDocumentRoot()
+	documentRoot := appState.UIHandler.GetDocumentRoot()
 	exp, err := ioutil.ReadFile(filepath.Join(documentRoot, "test.html"))
 	if err != nil {
 		t.Fatal(err)
@@ -77,10 +88,10 @@ func TestRouter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cfg := testConfig()
+		appState := testAppState()
 
 		rr := httptest.NewRecorder()
-		newRouter(cfg).ServeHTTP(rr, req)
+		newRouter(appState).ServeHTTP(rr, req)
 
 		if status := rr.Code; status != http.StatusOK {
 			t.Errorf("handler returned wrong status code: got %v want %v",
@@ -113,10 +124,10 @@ func TestRouter(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				cfg := testConfig()
+				appState := testAppState()
 
 				rr := httptest.NewRecorder()
-				newRouter(cfg).ServeHTTP(rr, req)
+				newRouter(appState).ServeHTTP(rr, req)
 
 				if rr.Code != tt.statusCode {
 					t.Errorf("handler for %v returned unexpected statuscode: got %v want %v",
@@ -130,28 +141,20 @@ func TestRouter(t *testing.T) {
 
 func TestLoadUIHandler(t *testing.T) {
 	t.Run("sets ClusterUIPath as document root if no current version", func(t *testing.T) {
-		cfg := NewDefaultConfig()
-		cfg.ClusterUIPath = "./public"
-		cfg.VersionsRoot = "./testdata/empty-versions"
-		LoadUpdateManager(&cfg)
-		LoadUIHandler("/static/", &cfg)
+		appState := testAppState()
 
-		docRoot := (*cfg.UIHandler).GetDocumentRoot()
-		expected := cfg.ClusterUIPath
+		docRoot := appState.UIHandler.GetDocumentRoot()
+		expected := appState.Config.ClusterUIPath
 		if docRoot != expected {
 			t.Errorf("ui handler documentroot set to %v, expected %v", docRoot, expected)
 		}
 	})
 
 	t.Run("sets ClusterUIPath as document root if no current version", func(t *testing.T) {
-		cfg := NewDefaultConfig()
-		cfg.ClusterUIPath = "./public"
-		cfg.VersionsRoot = "./testdata/one-version"
-		LoadUpdateManager(&cfg)
-		LoadUIHandler("/static/", &cfg)
+		appState := makeAppState("./testdata/one-version")
 
-		docRoot := (*cfg.UIHandler).GetDocumentRoot()
-		expected, err := (*cfg.UpdateManager).GetPathToCurrentVersion()
+		docRoot := appState.UIHandler.GetDocumentRoot()
+		expected, err := appState.UpdateManager.GetPathToCurrentVersion()
 		if err != nil {
 			t.Fatal(err)
 		}

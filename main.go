@@ -29,6 +29,10 @@ type Config struct {
 	MasterCountFile string
 
 	APIToken string
+}
+
+type ApplicationState struct {
+	Config *Config
 
 	UIHandler *UIFileHandler
 
@@ -48,8 +52,6 @@ func NewConfig(listenNet, listenAddress, universeURL, clusterUIPath, versionsRoo
 		versionsRoot,
 		masterCountFile,
 		"",
-		nil,
-		nil,
 	}
 }
 
@@ -76,22 +78,22 @@ func NewDefaultConfig() Config {
 	)
 }
 
-func LoadUpdateManager(cfg *Config) {
-	updateManager := NewUpdateManager((*cfg).UniverseURL, (*cfg).VersionsRoot, (*cfg).APIToken)
-	(*cfg).UpdateManager = &updateManager
+func LoadUpdateManager(cfg *Config) *UpdateManager {
+	updateManager := NewUpdateManager(cfg.UniverseURL, cfg.VersionsRoot, cfg.APIToken)
+	return &updateManager
 }
 
-func LoadUIHandler(assetPrefix string, cfg *Config) {
-	documentRoot := (*cfg).ClusterUIPath
-	currentVersionPath, err := (*(*cfg).UpdateManager).GetPathToCurrentVersion()
+func LoadUIHandler(assetPrefix string, cfg *Config, um *UpdateManager) *UIFileHandler {
+	documentRoot := cfg.ClusterUIPath
+	currentVersionPath, err := um.GetPathToCurrentVersion()
 	if err == nil {
 		documentRoot = currentVersionPath
 	}
 	uiHandler := NewUIFileHandler(assetPrefix, documentRoot)
-	(*cfg).UIHandler = &uiHandler
+	return &uiHandler
 }
 
-func loadConfig() *Config {
+func setupApplication() *ApplicationState {
 	cfg := NewDefaultConfig()
 	assetPrefix := defaultAssetPrefix
 	flag.StringVar(
@@ -114,25 +116,32 @@ func loadConfig() *Config {
 	)
 	flag.Parse()
 
-	LoadUpdateManager(&cfg)
-	LoadUIHandler(assetPrefix, &cfg)
+	updateManager := LoadUpdateManager(&cfg)
+	uiHandler := LoadUIHandler(assetPrefix, &cfg, updateManager)
 
-	return &cfg
+	state := ApplicationState{
+		Config:        &cfg,
+		UpdateManager: updateManager,
+		UIHandler:     uiHandler,
+	}
+
+	return &state
 }
 
 // TODO: think about client timeouts https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 func main() {
-	cfg := loadConfig()
+	state := setupApplication()
+
 	// Use systemd socket activation.
 	l, err := activation.Listeners()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Cannot listen for %q connections at address %q: %s", (*cfg).ListenNetProtocol, (*cfg).ListenNetAddress, err.Error())
+		fmt.Fprintf(os.Stderr, "Failed to activate listeners from systemd, will use configured protocol and address instead, %s", err.Error())
 		os.Exit(1)
 	}
 
 	if len(l) == 1 {
 		// Run application
-		if err := Run(cfg, l[0]); err != nil {
+		if err := Run(state, l[0]); err != nil {
 			fmt.Fprintf(os.Stderr, "Application error: %s", err.Error())
 			os.Exit(1)
 		}
@@ -140,16 +149,23 @@ func main() {
 	}
 
 	// Start socket
-	if err := StartSocket(cfg); err != nil {
+	if err := StartSocket(state); err != nil {
 		fmt.Fprintf(os.Stderr, "Application error: %s", err.Error())
 		os.Exit(1)
 	}
 }
 
+// Run serves the API based on the Config and Listener provided
+func Run(state *ApplicationState, l net.Listener) error {
+	r := newRouter(state)
+	http.Handle("/", r)
+	return http.Serve(l, r)
+}
+
 // StartSocket if systemd did not provide a socket
-func StartSocket(cfg *Config) error {
-	listenNet := cfg.ListenNetProtocol
-	listenAddr := cfg.ListenNetAddress
+func StartSocket(state *ApplicationState) error {
+	listenNet := state.Config.ListenNetProtocol
+	listenAddr := state.Config.ListenNetAddress
 
 	l, err := net.Listen(listenNet, listenAddr)
 	fmt.Fprintf(os.Stderr, "Starting new socket using net: %q and Addr: %q\n", listenNet, listenAddr)
@@ -157,22 +173,17 @@ func StartSocket(cfg *Config) error {
 		fmt.Fprintf(os.Stderr, "Cannot listen for %q connections at address %q: %s \n", listenNet, listenAddr, err.Error())
 		os.Exit(1)
 	}
-	return Run(cfg, l)
+	return Run(state, l)
 }
 
-// Run the server and listen to provided address
-func Run(cfg *Config, l net.Listener) error {
-	r := newRouter(cfg)
-	http.Handle("/", r)
-	return http.Serve(l, r)
-}
+func newRouter(state *ApplicationState) *mux.Router {
+	assetPrefix := state.UIHandler.GetAssetPrefix()
 
-func newRouter(cfg *Config) *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/", NotImplementedHandler)
-	r.HandleFunc("/api/v1/update/{version}", UpdateHandler(cfg))
-	r.HandleFunc("/api/v1/reset/", ResetHandler(cfg))
-	r.PathPrefix((*(*cfg).UIHandler).GetAssetPrefix()).Handler((*cfg).UIHandler)
+	r.HandleFunc("/api/v1/update/{version}", UpdateHandler(state))
+	r.HandleFunc("/api/v1/reset/", ResetHandler(state))
+	r.PathPrefix(assetPrefix).Handler(state.UIHandler)
 	return r
 }
 
@@ -182,9 +193,9 @@ func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateHandler processes update requests
-func UpdateHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
+func UpdateHandler(state *ApplicationState) func(http.ResponseWriter, *http.Request) {
 	dcos := Dcos{
-		MasterCountLocation: (*cfg).MasterCountFile,
+		MasterCountLocation: state.Config.MasterCountFile,
 	}
 
 	isMultiMaster, err := dcos.IsMultiMaster()
@@ -209,7 +220,7 @@ func UpdateHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusNotAcceptable)
 			return
 		}
-		err := (*(*cfg).UpdateManager).UpdateToVersion(version, (*cfg).UIHandler)
+		err := state.UpdateManager.UpdateToVersion(version, state.UIHandler)
 
 		if err != nil {
 			// This returns locked on every error, it would be better if we would return a boolean if the process is locked
@@ -222,7 +233,7 @@ func UpdateHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
 }
 
 // ResetHandler processes reset requests
-func ResetHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
+func ResetHandler(state *ApplicationState) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		method := r.Method
 		if method != "DELETE" {
@@ -230,16 +241,16 @@ func ResetHandler(cfg *Config) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 		// verify we aren't currently serving pre-bundled version
-		if (*cfg).ClusterUIPath == (*(*cfg).UIHandler).GetDocumentRoot() {
+		if state.Config.ClusterUIPath == state.UIHandler.GetDocumentRoot() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		err := (*(*cfg).UIHandler).UpdateDocumentRoot((*cfg).ClusterUIPath)
+		err := state.UIHandler.UpdateDocumentRoot(state.Config.ClusterUIPath)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		err = (*(*cfg).UpdateManager).ResetVersion()
+		err = state.UpdateManager.ResetVersion()
 		if err != nil {
 			// TODO: Log we failed to remove latest
 		}
