@@ -1,5 +1,6 @@
 FROM golang:1.11
 WORKDIR /src
+EXPOSE 5000
 
 RUN apt-get update && apt-get install -y curl vim python-pip groff && \
     pip install --upgrade awscli

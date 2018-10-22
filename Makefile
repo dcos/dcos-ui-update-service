@@ -4,7 +4,7 @@ DOCKER_DIR=/src
 
 .PHONY: start 
 start: docker-image
-	$(call inDocker,rerun -v)
+	$(call inDocker,rerun -v --config=rerun.json)
 
 .PHONY: watchTest 
 watchTest: docker-image 
@@ -39,7 +39,7 @@ ifdef NO_DOCKER
   endef
 else
   define inDocker
-    docker run \
+    docker run -p 5000:5000/tcp \
       -v $(CURRENT_DIR):$(DOCKER_DIR) \
       -it \
       --name dcos-ui-service \
