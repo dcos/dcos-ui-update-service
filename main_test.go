@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+
+	"github.com/dcos/dcos-ui-update-service/config"
 )
 
 func listen() (net.Listener, error) {
@@ -19,16 +21,16 @@ func testAppState() *ApplicationState {
 }
 
 func makeAppState(versionsRoot string) *ApplicationState {
-	cfg := NewDefaultConfig()
+	cfg := config.NewDefaultConfig()
 	cfg.ClusterUIPath = "./public"
 	cfg.VersionsRoot = versionsRoot
 	cfg.MasterCountFile = "./fixtures/single-master"
 
-	um := LoadUpdateManager(&cfg)
-	uiHandler := LoadUIHandler(&cfg, um)
+	um := LoadUpdateManager(cfg)
+	uiHandler := LoadUIHandler(cfg, um)
 
 	state := &ApplicationState{
-		Config:        &cfg,
+		Config:        cfg,
 		UpdateManager: um,
 		UIHandler:     uiHandler,
 	}

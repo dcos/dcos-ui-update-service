@@ -1,93 +1,30 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 
 	"github.com/coreos/go-systemd/activation"
+	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/gorilla/mux"
 )
 
-// Config holds the configuration vaules needed for the Application
-type Config struct {
-	ListenNetProtocol string
-
-	ListenNetAddress string
-
-	UniverseURL string
-
-	StaticAssetPrefix string
-
-	// The filesystem path where the cluster pre-bundled UI is stored
-	ClusterUIPath string
-
-	// The filesystem path where downloaded versions are stored
-	VersionsRoot string
-
-	// The filesystem path where the file determining the master count is
-	MasterCountFile string
-
-	APIToken string
-}
-
 type ApplicationState struct {
-	Config *Config
+	Config *config.Config
 
 	UIHandler *UIFileHandler
 
 	UpdateManager *UpdateManager
 }
 
-// NewConfig returns an instance of Config to be used by the Application
-func NewConfig(listenNet, listenAddress, universeURL, assetPrefix, clusterUIPath, versionsRoot, masterCountFile string) Config {
-
-	// Don't use keyed literals so we get errors at compile time when new
-	// config fields get added.
-	return Config{
-		listenNet,
-		listenAddress,
-		universeURL,
-		assetPrefix,
-		clusterUIPath,
-		versionsRoot,
-		masterCountFile,
-		"",
-	}
-}
-
-// Default values for config files
-const (
-	defaultListenNet       = "unix"
-	defaultListenAddr      = "/run/dcos/dcos-ui-update-service.sock"
-	defaultAssetPrefix     = "/static/"
-	defaultUniverseURL     = "https://leader.mesos"
-	defaultClusterUIPath   = "/opt/mesosphere/active/dcos-ui/usr"
-	defaultVersionsRoot    = "./versions"
-	defaultMasterCountFile = "/opt/mesosphere/etc/master_count"
-)
-
-// NewDefaultConfig creates a Config from default values
-func NewDefaultConfig() Config {
-	return NewConfig(
-		defaultListenNet,
-		defaultListenAddr,
-		defaultUniverseURL,
-		defaultAssetPrefix,
-		defaultClusterUIPath,
-		defaultVersionsRoot,
-		defaultMasterCountFile,
-	)
-}
-
-func LoadUpdateManager(cfg *Config) *UpdateManager {
+func LoadUpdateManager(cfg *config.Config) *UpdateManager {
 	updateManager := NewUpdateManager(cfg.UniverseURL, cfg.VersionsRoot, cfg.APIToken)
 	return &updateManager
 }
 
-func LoadUIHandler(cfg *Config, um *UpdateManager) *UIFileHandler {
+func LoadUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
 	documentRoot := cfg.ClusterUIPath
 	currentVersionPath, err := um.GetPathToCurrentVersion()
 	if err == nil {
@@ -98,32 +35,12 @@ func LoadUIHandler(cfg *Config, um *UpdateManager) *UIFileHandler {
 }
 
 func setupApplication() *ApplicationState {
-	cfg := NewDefaultConfig()
-	flag.StringVar(
-		&cfg.ListenNetProtocol,
-		"listen-net",
-		cfg.ListenNetProtocol,
-		"The transport type on which to listen for connections. May be one of 'tcp', 'unix'.",
-	)
-	flag.StringVar(&cfg.ListenNetAddress, "listen-addr", cfg.ListenNetAddress, "The network address at which to listen for connections.")
-	flag.StringVar(&cfg.StaticAssetPrefix, "asset-prefix", cfg.StaticAssetPrefix, "The URL path at which to host static assets.")
-	flag.StringVar(&cfg.UniverseURL, "universe-url", cfg.UniverseURL, "The URL where universe can be reached")
-	flag.StringVar(&cfg.ClusterUIPath, "default-ui-path", cfg.ClusterUIPath, "The filesystem path to serve the default UI from (pre-bundled).")
-	flag.StringVar(&cfg.VersionsRoot, "versions-root", cfg.VersionsRoot, "The filesystem path where downloaded versions are stored")
-	flag.StringVar(&cfg.MasterCountFile, "master-count-file", cfg.MasterCountFile, "The filesystem path to the file determining the master count")
-	flag.StringVar(
-		&cfg.APIToken,
-		"api-token",
-		cfg.APIToken,
-		"DC/OS API token to use for authentication, this should only be needed for local development.",
-	)
-	flag.Parse()
-
-	updateManager := LoadUpdateManager(&cfg)
-	uiHandler := LoadUIHandler(&cfg, updateManager)
+	cfg := config.Parse()
+	updateManager := LoadUpdateManager(cfg)
+	uiHandler := LoadUIHandler(cfg, updateManager)
 
 	state := &ApplicationState{
-		Config:        &cfg,
+		Config:        cfg,
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
 	}
