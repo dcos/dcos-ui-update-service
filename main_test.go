@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/dcos/dcos-ui-update-service/config"
 )
 
@@ -26,7 +27,7 @@ func makeAppState(versionsRoot string) *ApplicationState {
 	cfg.VersionsRoot = versionsRoot
 	cfg.MasterCountFile = "./fixtures/single-master"
 
-	um := LoadUpdateManager(cfg)
+	um := NewUpdateManager(cfg, &client.HTTP{})
 	uiHandler := LoadUIHandler(cfg, um)
 
 	state := &ApplicationState{

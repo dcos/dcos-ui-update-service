@@ -7,7 +7,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/dcos/dcos-ui-update-service/client"
 )
+
+func makeTestClient(server *httptest.Server) CosmosClient {
+	return CosmosClient{
+		client:      &client.HTTP{*server.Client()},
+		UniverseURL: server.URL,
+	}
+}
 
 func TestCosmosListVersions(t *testing.T) {
 	defaultResponse := `{"results":{"2.25.0":"11","1.0.5-2.2.5":"7","1.0.15-3.0.7":"15","1.0.20-3.0.10":"20","1.0.17-3.0.8":"17","1.0.21-3.0.10":"21","2.0.1-3.0.14":"27","1.0.22-3.0.10":"22","1.0.23-3.0.10":"23","1.0.24-3.0.10":"24","1.0.13-2.2.5":"13","2.1.0-3.0.16":"100","1.0.12-2.2.5":"12","1.0.2-2.2.5":"4","1.0.18-3.0.9":"18","0.2.0-2":"1","1.0.16-3.0.8":"16","1.0.25-3.0.10":"25","2.0.2-3.0.14":"28","2.2.5-0.2.0":"3","1.0.8-2.2.5":"10","2.0.0-3.0.14":"26","2.2.0-3.0.16":"200","1.0.14-3.0.7":"14","1.0.6-2.2.5":"8","2.0.3-3.0.14":"29","2.3.0-3.0.16":"300","1.0.7-2.2.5":"9","0.2.0-1":"0","1.0.4-2.2.5":"5"}}`
@@ -57,10 +66,7 @@ func TestCosmosListVersions(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := CosmosClient{
-			Client:      server.Client(),
-			UniverseURL: server.URL,
-		}
+		cosmos := makeTestClient(server)
 
 		resp, err := cosmos.listPackageVersions("dcos-ui")
 
@@ -82,10 +88,7 @@ func TestCosmosListVersions(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := CosmosClient{
-			Client:      server.Client(),
-			UniverseURL: server.URL,
-		}
+		cosmos := makeTestClient(server)
 
 		_, err := cosmos.listPackageVersions("dcos-ui")
 
@@ -101,10 +104,7 @@ func TestCosmosListVersions(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := CosmosClient{
-			Client:      server.Client(),
-			UniverseURL: server.URL,
-		}
+		cosmos := makeTestClient(server)
 
 		_, err := cosmos.listPackageVersions("dcos-ui")
 
@@ -171,10 +171,7 @@ func TestCosmosDetail(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := CosmosClient{
-			Client:      server.Client(),
-			UniverseURL: server.URL,
-		}
+		cosmos := makeTestClient(server)
 
 		resp, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
 
@@ -197,10 +194,7 @@ func TestCosmosDetail(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := CosmosClient{
-			Client:      server.Client(),
-			UniverseURL: server.URL,
-		}
+		cosmos := makeTestClient(server)
 
 		_, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
 
@@ -216,10 +210,7 @@ func TestCosmosDetail(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := CosmosClient{
-			Client:      server.Client(),
-			UniverseURL: server.URL,
-		}
+		cosmos := makeTestClient(server)
 
 		_, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
 
@@ -242,10 +233,7 @@ func TestCosmosDetail(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := CosmosClient{
-			Client:      server.Client(),
-			UniverseURL: server.URL,
-		}
+		cosmos := makeTestClient(server)
 
 		_, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
 

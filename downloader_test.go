@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/spf13/afero"
 )
 
@@ -20,7 +21,7 @@ func TestDownloader(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 
 			loader := Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 				Fs:     appFS,
 			}
 
@@ -51,7 +52,7 @@ func TestDownloader(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 
 			loader := Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 				Fs:     appFS,
 			}
 
@@ -76,7 +77,7 @@ func TestDownloader(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 
 			loader := Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 				Fs:     appFS,
 			}
 

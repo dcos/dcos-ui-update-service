@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/spf13/afero"
 )
 
@@ -95,11 +96,11 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: "http://unkonwn",
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -122,11 +123,11 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -149,11 +150,11 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -176,11 +177,11 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -203,11 +204,11 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -235,11 +236,11 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -260,11 +261,11 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -289,11 +290,11 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -319,11 +320,11 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -350,11 +351,11 @@ func TestUpdateManagerGetPathToCurrentVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -380,11 +381,11 @@ func TestUpdateManagerGetPathToCurrentVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -441,11 +442,11 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -510,11 +511,11 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 				Fs:     fs,
 			},
 			VersionPath: "/ui-versions",
@@ -550,11 +551,11 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 				Fs:     fs,
 			},
 			VersionPath: "/ui-versions",
@@ -603,11 +604,11 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -656,11 +657,11 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -703,11 +704,11 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -748,11 +749,11 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -775,11 +776,11 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -805,11 +806,11 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 
 		loader := UpdateManager{
 			Cosmos: CosmosClient{
-				Client:      server.Client(),
+				client:      &client.HTTP{*server.Client()},
 				UniverseURL: server.URL,
 			},
 			Loader: Downloader{
-				Client: server.Client(),
+				client: &client.HTTP{*server.Client()},
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,

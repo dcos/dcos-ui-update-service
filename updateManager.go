@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 
+	"github.com/dcos/dcos-ui-update-service/client"
+	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 )
@@ -17,6 +18,7 @@ type UpdateManager struct {
 	UniverseURL string // maybe use url instead of string
 	VersionPath string
 	Fs          afero.Fs
+	client      *client.HTTP
 }
 
 func (l *ListVersionResponse) includesTargetVersion(version string) bool {
@@ -24,27 +26,22 @@ func (l *ListVersionResponse) includesTargetVersion(version string) bool {
 }
 
 // NewUpdateManager creates a new instance of UpdateManager
-func NewUpdateManager(universeURL, versionPath, authToken string) UpdateManager {
-	// TODO: write better clients
+func NewUpdateManager(cfg *config.Config, httpClient *client.HTTP) *UpdateManager {
 	fs := afero.NewOsFs()
-	useAuth := len(authToken) > 0
 
-	return UpdateManager{
+	return &UpdateManager{
 		Cosmos: CosmosClient{
-			Client:      &http.Client{},
-			UniverseURL: universeURL,
-			UseAuth:     useAuth,
-			AuthToken:   authToken,
+			client:      httpClient,
+			UniverseURL: cfg.UniverseURL,
 		},
 		Loader: Downloader{
-			Client:    &http.Client{},
-			Fs:        fs,
-			UseAuth:   useAuth,
-			AuthToken: authToken,
+			client: httpClient,
+			Fs:     fs,
 		},
-		UniverseURL: universeURL,
-		VersionPath: versionPath,
+		UniverseURL: cfg.UniverseURL,
+		VersionPath: cfg.VersionsRoot,
 		Fs:          fs,
+		client:      httpClient,
 	}
 }
 

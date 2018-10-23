@@ -4,18 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
+	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/tidwall/gjson"
 )
 
 // CosmosClient abstracts common API calls against Cosmos
 type CosmosClient struct {
-	Client      *http.Client
+	client      *client.HTTP
 	UniverseURL string // maybe use url instead of string
-	UseAuth     bool
-	AuthToken   string
 }
 
 // ListVersionResponse is the parsed result of /package/list-versions requests
@@ -52,21 +50,16 @@ func (c *CosmosClient) listPackageVersions(packageName string) (*ListVersionResp
 	}
 	req.Header.Set("accept", "application/vnd.dcos.package.list-versions-response+json;charset=utf-8;version=v1")
 	req.Header.Set("content-type", "application/vnd.dcos.package.list-versions-request+json;charset=utf-8;version=v1")
-	if c.UseAuth {
-		req.Header.Set("authorization", "token="+c.AuthToken)
-	}
 
-	resp, err := c.Client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to query cosmos")
 	}
 	var response ListVersionResponse
-
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
 		return nil, err
@@ -88,23 +81,15 @@ func (c *CosmosClient) getPackageAssets(packageName string, packageVersion strin
 	}
 	req.Header.Set("accept", "application/vnd.dcos.package.describe-response+json;charset=utf-8;version=v3")
 	req.Header.Set("content-type", "application/vnd.dcos.package.describe-request+json;charset=UTF-8;version=v1")
-	if c.UseAuth {
-		req.Header.Set("authorization", "token="+c.AuthToken)
-	}
-	resp, err := c.Client.Do(req)
+
+	result, err := c.client.Read(c.client.Do(req))
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
+	if result.Code != http.StatusOK {
 		return nil, fmt.Errorf("failed to query cosmos")
 	}
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("Could not load response body")
-	}
-	json := string(bodyBytes)
+	json := string(result.Body)
 	if !gjson.Valid(json) {
 		return nil, fmt.Errorf("Could not parse JSON")
 	}

@@ -6,11 +6,11 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 )
@@ -22,10 +22,8 @@ type ArchiveDownloader interface {
 
 // Downloader is used to download a package from a URL and extract it to the filesystem
 type Downloader struct {
-	Client    *http.Client
-	Fs        afero.Fs
-	UseAuth   bool
-	AuthToken string
+	client *client.HTTP
+	Fs     afero.Fs
 }
 
 // ExtractTarGzToDir extracts payload as a tar file, unzips each entry.
@@ -93,25 +91,14 @@ func (d *Downloader) downloadAndUnpack(fileURL string, targetDirectory string) e
 		return err
 	}
 	req.Header.Set("content-type", "application/octet-stream")
-	if d.UseAuth {
-		req.Header.Set("Authorization", "token="+d.AuthToken)
-	}
-
-	resp, err := d.Client.Do(req)
+	result, err := d.client.Read(d.client.Do(req))
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("failed to download package %v", resp.StatusCode)
+	if result.Code != http.StatusOK {
+		return fmt.Errorf("failed to download package %v", result.Code)
 	}
-
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	err = d.ExtractTarGzToDir(targetDirectory, bodyBytes)
+	err = d.ExtractTarGzToDir(targetDirectory, result.Body)
 	if err != nil {
 		return err
 	}

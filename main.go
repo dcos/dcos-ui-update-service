@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/coreos/go-systemd/activation"
+	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/gorilla/mux"
 )
@@ -17,11 +18,6 @@ type ApplicationState struct {
 	UIHandler *UIFileHandler
 
 	UpdateManager *UpdateManager
-}
-
-func LoadUpdateManager(cfg *config.Config) *UpdateManager {
-	updateManager := NewUpdateManager(cfg.UniverseURL, cfg.VersionsRoot, cfg.APIToken)
-	return &updateManager
 }
 
 func LoadUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
@@ -36,7 +32,12 @@ func LoadUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
 
 func setupApplication() *ApplicationState {
 	cfg := config.Parse()
-	updateManager := LoadUpdateManager(cfg)
+	httpClient, err := client.New(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not build http client: %s", err.Error())
+		os.Exit(1)
+	}
+	updateManager := NewUpdateManager(cfg, httpClient)
 	uiHandler := LoadUIHandler(cfg, updateManager)
 
 	state := &ApplicationState{
