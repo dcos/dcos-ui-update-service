@@ -18,6 +18,8 @@ type ApplicationState struct {
 	UIHandler *UIFileHandler
 
 	UpdateManager *UpdateManager
+
+	Client *client.HTTP
 }
 
 func LoadUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
@@ -44,6 +46,7 @@ func setupApplication() *ApplicationState {
 		Config:        cfg,
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
+		Client:        httpClient,
 	}
 
 	return state
@@ -141,6 +144,12 @@ func UpdateHandler(state *ApplicationState) func(http.ResponseWriter, *http.Requ
 			w.WriteHeader(http.StatusNotAcceptable)
 			return
 		}
+		clientAuth := r.Header.Get("Authorization")
+		if clientAuth != "" {
+			state.Client.SetClientAuth(clientAuth)
+			defer state.Client.ClearClientAuth()
+		}
+
 		err := state.UpdateManager.UpdateToVersion(version, state.UIHandler)
 
 		if err != nil {

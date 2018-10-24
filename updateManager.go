@@ -30,10 +30,7 @@ func NewUpdateManager(cfg *config.Config, httpClient *client.HTTP) *UpdateManage
 	fs := afero.NewOsFs()
 
 	return &UpdateManager{
-		Cosmos: CosmosClient{
-			client:      httpClient,
-			UniverseURL: cfg.UniverseURL,
-		},
+		Cosmos: NewCosmosClient(httpClient, cfg.UniverseURL),
 		Loader: Downloader{
 			client: httpClient,
 			Fs:     fs,

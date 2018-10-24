@@ -12,10 +12,7 @@ import (
 )
 
 func makeTestClient(server *httptest.Server) CosmosClient {
-	return CosmosClient{
-		client:      &client.HTTP{*server.Client()},
-		UniverseURL: server.URL,
-	}
+	return NewCosmosClient(client.NewClient(server.Client()), server.URL)
 }
 
 func TestCosmosListVersions(t *testing.T) {

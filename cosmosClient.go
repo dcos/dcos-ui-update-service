@@ -107,3 +107,10 @@ func (c *CosmosClient) getPackageAssets(packageName string, packageVersion strin
 
 	return stringifyResult, nil
 }
+
+func NewCosmosClient(client *client.HTTP, universeURL string) CosmosClient {
+	return CosmosClient{
+		client:      client,
+		UniverseURL: universeURL,
+	}
+}

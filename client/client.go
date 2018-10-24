@@ -12,7 +12,9 @@ import (
 
 // HTTP is a convenience wrapper around an httpClient
 type HTTP struct {
-	http.Client
+	client           *http.Client
+	clientAuthHeader string
+	hasIAM           bool
 }
 
 func (h *HTTP) Read(resp *http.Response, err error) (*HTTPResult, error) {
@@ -33,26 +35,26 @@ func (h *HTTP) Read(resp *http.Response, err error) (*HTTPResult, error) {
 	}, nil
 }
 
-// New returns a new http.Client that handles setting the authentication
-// header appropriately for the dcos-ui-update-service account. It also sets
-// the url scheme to use http vs. https based on whether or not
-// config.CACertFile was set.
-func New(cfg *config.Config) (*HTTP, error) {
-	roundTripper, err := getTransport(cfg)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get transport")
+func (h *HTTP) Do(req *http.Request) (*http.Response, error) {
+	if !h.hasIAM && h.clientAuthHeader != "" {
+		req.Header.Set("Authorization", h.clientAuthHeader)
 	}
-	client := http.Client{
-		Transport: roundTripper,
-		Timeout:   cfg.HTTPClientTimeout,
-	}
-	return &HTTP{client}, nil
+	return h.client.Do(req)
 }
 
-func getTransport(cfg *config.Config) (http.RoundTripper, error) {
-	useHTTPS := cfg.CACertFile != ""
+func (h *HTTP) SetClientAuth(clientAuth string) {
+	h.clientAuthHeader = clientAuth
+}
+
+func (h *HTTP) ClearClientAuth() {
+	h.clientAuthHeader = ""
+}
+
+// New returns a new http.Client that handles setting the authentication
+// header appropriately for the dcos-ui-service account if IAM is configured.
+func New(cfg *config.Config) (*HTTP, error) {
 	transportOptions := []transport.OptionTransportFunc{}
-	if useHTTPS {
+	if cfg.CACertFile != "" {
 		transportOptions = append(transportOptions, transport.OptionCaCertificatePath(cfg.CACertFile))
 	}
 	if cfg.IAMConfig != "" {
@@ -62,5 +64,14 @@ func getTransport(cfg *config.Config) (http.RoundTripper, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Unable to initialize HTTP transport: %s", err)
 	}
-	return &httpsRoundTripper{tr, useHTTPS}, nil
+	hasIAM := cfg.IAMConfig != ""
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   cfg.HTTPClientTimeout,
+	}
+	return &HTTP{client, "", hasIAM}, nil
+}
+
+func NewClient(client *http.Client) *HTTP {
+	return &HTTP{client, "", false}
 }

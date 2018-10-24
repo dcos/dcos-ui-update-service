@@ -95,12 +95,9 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		defer server.Close()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: "http://unkonwn",
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), "http://unkonwn"),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -122,12 +119,9 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		defer server.Close()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -149,12 +143,9 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		defer server.Close()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -176,12 +167,9 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		defer server.Close()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -203,12 +191,9 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		defer server.Close()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -235,12 +220,9 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -260,12 +242,9 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -289,12 +268,9 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -319,12 +295,9 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -350,12 +323,9 @@ func TestUpdateManagerGetPathToCurrentVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -380,12 +350,9 @@ func TestUpdateManagerGetPathToCurrentVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -441,12 +408,9 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		versionsPath := "/ui-versions"
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -510,12 +474,9 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: "/ui-versions",
@@ -550,12 +511,9 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: "/ui-versions",
@@ -603,12 +561,9 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		versionsPath := "/ui-versions"
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -656,12 +611,9 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		versionsPath := "/ui-versions"
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -703,12 +655,9 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		versionsPath := "/ui-versions"
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -748,12 +697,9 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -775,12 +721,9 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -805,12 +748,9 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 		fs := afero.NewMemMapFs()
 
 		loader := UpdateManager{
-			Cosmos: CosmosClient{
-				client:      &client.HTTP{*server.Client()},
-				UniverseURL: server.URL,
-			},
+			Cosmos: NewCosmosClient(client.NewClient(server.Client()), server.URL),
 			Loader: Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,

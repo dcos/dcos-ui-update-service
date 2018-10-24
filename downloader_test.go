@@ -21,7 +21,7 @@ func TestDownloader(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 
 			loader := Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 				Fs:     appFS,
 			}
 
@@ -52,7 +52,7 @@ func TestDownloader(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 
 			loader := Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 				Fs:     appFS,
 			}
 
@@ -77,7 +77,7 @@ func TestDownloader(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 
 			loader := Downloader{
-				client: &client.HTTP{*server.Client()},
+				client: client.NewClient(server.Client()),
 				Fs:     appFS,
 			}
 

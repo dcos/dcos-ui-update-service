@@ -1,62 +1,65 @@
 package client
 
 import (
-	"errors"
 	"net/http"
-	"net/url"
+	"net/http/httptest"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func TestSchemeConversion(t *testing.T) {
-	for _, tc := range []struct {
-		useHTTPS    bool
-		url         string
-		expectedURL string
-	}{
-		{
-			useHTTPS:    false,
-			url:         "http://example.com?x=y",
-			expectedURL: "http://example.com?x=y",
-		},
-		{
-			useHTTPS:    false,
-			url:         "https://example.com?x=y",
-			expectedURL: "http://example.com?x=y",
-		},
-		{
-			useHTTPS:    true,
-			url:         "http://example.com?x=y",
-			expectedURL: "https://example.com?x=y",
-		},
-		{
-			useHTTPS:    true,
-			url:         "http://example.com?x=y",
-			expectedURL: "https://example.com?x=y",
-		},
-	} {
-		mockTransport := &mockTransport{}
-		rt := &httpsRoundTripper{mockTransport, tc.useHTTPS}
-		client := &http.Client{Transport: rt}
-		client.Get(tc.url)
-		expectedURL, err := url.Parse(tc.expectedURL)
-		if err != nil {
-			t.Fatal(err)
+func makeMockServer(expectedAuthHeader string) *httptest.Server {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		receivedAuth := req.Header.Get("Authorization")
+		if receivedAuth != expectedAuthHeader {
+			rw.WriteHeader(http.StatusBadRequest)
+		} else {
+			rw.WriteHeader(http.StatusOK)
 		}
-		assert.Equal(t, expectedURL, mockTransport.usedURL,
-			"Test: %+v", tc)
-	}
+	}))
+
+	return server
 }
 
-type mockTransport struct {
-	usedURL *url.URL
-}
+func TestClientUsesAuth(t *testing.T) {
+	t.Run("uses clientAuthHeader if set", func(t *testing.T) {
+		authValue := "testing123"
+		server := makeMockServer(authValue)
+		defer server.Close()
 
-func (f *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	f.usedURL = req.URL
-	return nil, errors.New("No implementation needed")
-}
+		client := NewClient(server.Client())
+		client.SetClientAuth(authValue)
 
-//http://example.com?x=y
-//http://example.com?x=y
+		req, err := http.NewRequest("GET", server.URL+"/", nil)
+		if err != nil {
+			t.Fatalf("Expected NewRequest err to be nil, got %v", err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Expected Do err to be nil, got %v", err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected Auth header didn't match, mock server returned %v", resp.StatusCode)
+		}
+	})
+
+	t.Run("clears clientAuthHeader as expected", func(t *testing.T) {
+		authValue := ""
+		server := makeMockServer(authValue)
+		defer server.Close()
+
+		client := NewClient(server.Client())
+		client.SetClientAuth("testing123")
+		client.ClearClientAuth()
+
+		req, err := http.NewRequest("GET", server.URL+"/", nil)
+		if err != nil {
+			t.Fatalf("Expected NewRequest err to be nil, got %v", err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Expected Do err to be nil, got %v", err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected Auth header didn't match, mock server returned %v", resp.StatusCode)
+		}
+	})
+}
