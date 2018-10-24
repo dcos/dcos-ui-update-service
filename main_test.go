@@ -10,6 +10,7 @@ import (
 
 	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/spf13/afero"
 )
 
 func listen() (net.Listener, error) {
@@ -17,17 +18,16 @@ func listen() (net.Listener, error) {
 	return net.Listen("tcp", "127.0.0.1:0")
 }
 
-func testAppState() *ApplicationState {
-	return makeAppState("./testdata/empty-versions")
-}
-
-func makeAppState(versionsRoot string) *ApplicationState {
+func makeAppState() *ApplicationState {
 	cfg := config.NewDefaultConfig()
 	cfg.ClusterUIPath = "./public"
-	cfg.VersionsRoot = versionsRoot
+	cfg.VersionsRoot = "/ui-versions"
 	cfg.MasterCountFile = "./fixtures/single-master"
 
 	um := NewUpdateManager(cfg, &client.HTTP{})
+	um.Fs = afero.NewMemMapFs()
+	um.Fs.MkdirAll("/ui-versions", 0755)
+
 	uiHandler := LoadUIHandler(cfg, um)
 
 	state := &ApplicationState{
@@ -54,7 +54,7 @@ func TestApplication(t *testing.T) {
 	// to stop running and return an error from Run().
 	defer l.Close()
 	// Start a test server.
-	appState := testAppState()
+	appState := makeAppState()
 	appState.UIHandler.UpdateDocumentRoot("./testdata/docroot/public")
 	go func() {
 		appDoneCh <- Run(appState, l)
@@ -91,7 +91,7 @@ func TestRouter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		appState := testAppState()
+		appState := makeAppState()
 
 		rr := httptest.NewRecorder()
 		newRouter(appState).ServeHTTP(rr, req)
@@ -127,7 +127,7 @@ func TestRouter(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				appState := testAppState()
+				appState := makeAppState()
 
 				rr := httptest.NewRecorder()
 				newRouter(appState).ServeHTTP(rr, req)
@@ -144,20 +144,38 @@ func TestRouter(t *testing.T) {
 
 func TestLoadUIHandler(t *testing.T) {
 	t.Run("sets ClusterUIPath as document root if no current version", func(t *testing.T) {
-		appState := testAppState()
+		cfg := config.NewDefaultConfig()
+		cfg.ClusterUIPath = "./public"
+		cfg.VersionsRoot = "/ui-versions"
+		cfg.MasterCountFile = "./fixtures/single-master"
 
-		docRoot := appState.UIHandler.GetDocumentRoot()
-		expected := appState.Config.ClusterUIPath
+		um := NewUpdateManager(cfg, &client.HTTP{})
+		um.Fs = afero.NewMemMapFs()
+		um.Fs.MkdirAll("/ui-versions", 0755)
+
+		uiHandler := LoadUIHandler(cfg, um)
+
+		docRoot := uiHandler.GetDocumentRoot()
+		expected := cfg.ClusterUIPath
 		if docRoot != expected {
 			t.Errorf("ui handler documentroot set to %v, expected %v", docRoot, expected)
 		}
 	})
 
-	t.Run("sets ClusterUIPath as document root if no current version", func(t *testing.T) {
-		appState := makeAppState("./testdata/one-version")
+	t.Run("sets version as document root if there is a current version", func(t *testing.T) {
+		cfg := config.NewDefaultConfig()
+		cfg.ClusterUIPath = "./public"
+		cfg.VersionsRoot = "/ui-versions"
+		cfg.MasterCountFile = "./fixtures/single-master"
 
-		docRoot := appState.UIHandler.GetDocumentRoot()
-		expected, err := appState.UpdateManager.GetPathToCurrentVersion()
+		um := NewUpdateManager(cfg, &client.HTTP{})
+		um.Fs = afero.NewMemMapFs()
+		um.Fs.MkdirAll("/ui-versions/2.25.3", 0755)
+
+		uiHandler := LoadUIHandler(cfg, um)
+
+		docRoot := uiHandler.GetDocumentRoot()
+		expected, err := um.GetPathToCurrentVersion()
 		if err != nil {
 			t.Fatal(err)
 		}
