@@ -105,7 +105,7 @@ func newRouter(state *ApplicationState) *mux.Router {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/", NotImplementedHandler)
-	r.HandleFunc("/api/v1/update/{version}", UpdateHandler(state))
+	r.HandleFunc("/api/v1/update/{version}/", UpdateHandler(state))
 	r.HandleFunc("/api/v1/reset/", ResetHandler(state)).Methods("DELETE")
 	r.PathPrefix(assetPrefix).Handler(state.UIHandler)
 	return r
