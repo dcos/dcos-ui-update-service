@@ -675,8 +675,8 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
 		err := loader.UpdateToVersion("2.25.1", &mfs)
 
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
+		if err != nil {
+			t.Errorf("Attempting to update to the current version should return with no error, %v", err)
 		}
 	})
 

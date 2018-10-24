@@ -15,11 +15,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-// ArchiveDownloader downloads a given archive and unpacks it
-type ArchiveDownloader interface {
-	downloadAndUnpack(string, string) error
-}
-
 // Downloader is used to download a package from a URL and extract it to the filesystem
 type Downloader struct {
 	client *client.HTTP

@@ -121,7 +121,7 @@ func (um *UpdateManager) GetPathToCurrentVersion() (string, error) {
 		return "", err
 	}
 	if len(currentVersion) == 0 {
-		return "", fmt.Errorf("there is not current version available")
+		return "", fmt.Errorf("there is no current version available")
 	}
 
 	versionPath := path.Join(um.VersionPath, currentVersion)
@@ -138,7 +138,8 @@ func (um *UpdateManager) UpdateToVersion(version string, fileServer UIFileServer
 	}
 
 	if len(currentVersion) > 0 && currentVersion == version {
-		return fmt.Errorf("Trying to update to the same version")
+		// noop if we are currently on the requested version
+		return nil
 	}
 
 	targetDir := path.Join(um.VersionPath, version)
