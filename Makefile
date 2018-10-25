@@ -40,6 +40,7 @@ ifdef NO_DOCKER
 else
   define inDocker
     docker run -p 5000:5000/tcp \
+      -e CLUSTER_URL=$(CLUSTER_URL) \
       -v $(CURRENT_DIR):$(DOCKER_DIR) \
       -it \
       --name dcos-ui-service \
