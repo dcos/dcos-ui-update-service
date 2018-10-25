@@ -63,7 +63,7 @@ pipeline {
         ]) {
           sh "GOOS=linux GO111MODULE=on go build -o build/dcos-ui-update-service ./"
           // TODO: think about versioning https://jira.mesosphere.com/browse/DCOS-43672
-          sh "aws s3 cp build/dcos-ui-update-service s3://downloads.mesosphere.io/dcos-ui-update-service/latest/dcos-ui-update-service-${env.GIT_COMMIT} --metadata-directive REPLACE --cache-control max-age=0,no-cache,no-store,must-revalidate --acl public-read"
+          sh "aws s3 cp build/dcos-ui-update-service s3://downloads.mesosphere.io/dcos-ui-update-service/latest/dcos-ui-update-service-${env.GIT_COMMIT} --acl public-read"
         }
       }
     }
