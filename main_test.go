@@ -74,7 +74,7 @@ func TestApplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	documentRoot := appState.UIHandler.GetDocumentRoot()
+	documentRoot := appState.UIHandler.DocumentRoot()
 	exp, err := ioutil.ReadFile(filepath.Join(documentRoot, "test.html"))
 	if err != nil {
 		t.Fatal(err)
@@ -155,7 +155,7 @@ func TestLoadUIHandler(t *testing.T) {
 
 		uiHandler := LoadUIHandler(cfg, um)
 
-		docRoot := uiHandler.GetDocumentRoot()
+		docRoot := uiHandler.DocumentRoot()
 		expected := cfg.ClusterUIPath
 		if docRoot != expected {
 			t.Errorf("ui handler documentroot set to %v, expected %v", docRoot, expected)
@@ -174,7 +174,7 @@ func TestLoadUIHandler(t *testing.T) {
 
 		uiHandler := LoadUIHandler(cfg, um)
 
-		docRoot := uiHandler.GetDocumentRoot()
+		docRoot := uiHandler.DocumentRoot()
 		expected, err := um.GetPathToCurrentVersion()
 		if err != nil {
 			t.Fatal(err)

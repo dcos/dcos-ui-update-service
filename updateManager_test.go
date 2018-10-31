@@ -368,20 +368,20 @@ func TestUpdateManagerGetPathToCurrentVersion(t *testing.T) {
 }
 
 type MockFileServer struct {
-	DocumentRoot string
-	Error        error
+	DocRoot string
+	Error   error
 }
 
 func (mfs *MockFileServer) UpdateDocumentRoot(documentRoot string) error {
 	if mfs.Error != nil {
 		return mfs.Error
 	}
-	mfs.DocumentRoot = documentRoot
+	mfs.DocRoot = documentRoot
 	return nil
 }
 
-func (mfs *MockFileServer) GetDocumentRoot() string {
-	return mfs.DocumentRoot
+func (mfs *MockFileServer) DocumentRoot() string {
+	return mfs.DocRoot
 }
 
 func TestUpdateManagerUpdateToVersion(t *testing.T) {
@@ -417,8 +417,8 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			Fs:          fs,
 		}
 		mfs := MockFileServer{
-			DocumentRoot: "/opt/public",
-			Error:        nil,
+			DocRoot: "/opt/public",
+			Error:   nil,
 		}
 
 		fs.MkdirAll(versionsPath, 0755)
@@ -452,7 +452,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			t.Errorf("Expected only new version directory to exist")
 		}
 
-		fileServerUpdated := mfs.GetDocumentRoot() == newVersionPath
+		fileServerUpdated := mfs.DocumentRoot() == newVersionPath
 		if !fileServerUpdated {
 			t.Errorf("Expected new version directory to be set as document root")
 		}
@@ -483,8 +483,8 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			Fs:          fs,
 		}
 		mfs := MockFileServer{
-			DocumentRoot: "/opt/public",
-			Error:        nil,
+			DocRoot: "/opt/public",
+			Error:   nil,
 		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
@@ -520,8 +520,8 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			Fs:          fs,
 		}
 		mfs := MockFileServer{
-			DocumentRoot: "/opt/public",
-			Error:        nil,
+			DocRoot: "/opt/public",
+			Error:   nil,
 		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
@@ -570,8 +570,8 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			Fs:          fs,
 		}
 		mfs := MockFileServer{
-			DocumentRoot: "/opt/public",
-			Error:        nil,
+			DocRoot: "/opt/public",
+			Error:   nil,
 		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
@@ -620,8 +620,8 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			Fs:          fs,
 		}
 		mfs := MockFileServer{
-			DocumentRoot: "/opt/public",
-			Error:        nil,
+			DocRoot: "/opt/public",
+			Error:   nil,
 		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
@@ -664,8 +664,8 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 			Fs:          fs,
 		}
 		mfs := MockFileServer{
-			DocumentRoot: "/ui-versions/2.25.1",
-			Error:        fmt.Errorf("oh no bad stuff"),
+			DocRoot: "/ui-versions/2.25.1",
+			Error:   fmt.Errorf("oh no bad stuff"),
 		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)

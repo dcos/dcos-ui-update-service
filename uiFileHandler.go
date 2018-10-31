@@ -12,7 +12,7 @@ type UIFileHandler struct {
 }
 
 type UIFileServer interface {
-	GetDocumentRoot() string
+	DocumentRoot() string
 	UpdateDocumentRoot(documentRoot string) error
 }
 
@@ -54,12 +54,12 @@ func (ufh *UIFileHandler) UpdateDocumentRoot(documentRoot string) error {
 	return nil
 }
 
-// GetAssetPrefix return the assetPrefix for this handler
-func (ufh *UIFileHandler) GetAssetPrefix() string {
+// AssetPrefix return the assetPrefix for this handler
+func (ufh *UIFileHandler) AssetPrefix() string {
 	return ufh.assetPrefix
 }
 
-// GetDocumentRoot returns the current documentRoot for this handler
-func (ufh *UIFileHandler) GetDocumentRoot() string {
+// DocumentRoot returns the current documentRoot for this handler
+func (ufh *UIFileHandler) DocumentRoot() string {
 	return ufh.documentRoot
 }

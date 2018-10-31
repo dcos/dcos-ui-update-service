@@ -101,7 +101,7 @@ func StartSocket(state *ApplicationState) error {
 }
 
 func newRouter(state *ApplicationState) *mux.Router {
-	assetPrefix := state.UIHandler.GetAssetPrefix()
+	assetPrefix := state.UIHandler.AssetPrefix()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/", NotImplementedHandler)
@@ -166,7 +166,7 @@ func UpdateHandler(state *ApplicationState) func(http.ResponseWriter, *http.Requ
 func ResetHandler(state *ApplicationState) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// verify we aren't currently serving pre-bundled version
-		if state.Config.ClusterUIPath == state.UIHandler.GetDocumentRoot() {
+		if state.Config.ClusterUIPath == state.UIHandler.DocumentRoot() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}

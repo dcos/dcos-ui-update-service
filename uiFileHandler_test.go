@@ -71,7 +71,7 @@ func TestUIFileHandler(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		documentRoot := handler.GetDocumentRoot()
+		documentRoot := handler.DocumentRoot()
 		exp, err := ioutil.ReadFile(filepath.Join(documentRoot, "test.html"))
 		if err != nil {
 			t.Fatal(err)
@@ -92,7 +92,7 @@ func TestUIFileHandler(t *testing.T) {
 	t.Run("GetAssetPrefix returns expected value", func(t *testing.T) {
 		expAssetPrefix := "/static/"
 		handler := NewUIFileHandler("/static/", "./public")
-		assetPrefix := handler.GetAssetPrefix()
+		assetPrefix := handler.AssetPrefix()
 		if assetPrefix != expAssetPrefix {
 			t.Errorf("GetAssetPrefix returned %v, but expected %v", assetPrefix, expAssetPrefix)
 		}
@@ -101,7 +101,7 @@ func TestUIFileHandler(t *testing.T) {
 	t.Run("GetDocumentRoot returns expected value", func(t *testing.T) {
 		expDocRoot := "./public"
 		handler := NewUIFileHandler("/static/", "./public")
-		docRoot := handler.GetDocumentRoot()
+		docRoot := handler.DocumentRoot()
 		if docRoot != expDocRoot {
 			t.Errorf("GetDocumentRoot returned %v, but expected %v", docRoot, expDocRoot)
 		}
@@ -111,12 +111,12 @@ func TestUIFileHandler(t *testing.T) {
 		expDocRoot1 := "./public"
 		expDocRoot2 := "./testdata/docroot/public"
 		handler := NewUIFileHandler("/static/", "./public")
-		docRoot := handler.GetDocumentRoot()
+		docRoot := handler.DocumentRoot()
 		if docRoot != expDocRoot1 {
 			t.Errorf("GetDocumentRoot returned %v, but expected %v", docRoot, expDocRoot1)
 		}
 		handler.UpdateDocumentRoot("./testdata/docroot/public")
-		docRoot = handler.GetDocumentRoot()
+		docRoot = handler.DocumentRoot()
 		if docRoot != expDocRoot2 {
 			t.Errorf("GetDocumentRoot returned %v, but expected %v", docRoot, expDocRoot2)
 		}
