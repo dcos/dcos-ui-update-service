@@ -12,7 +12,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type ApplicationState struct {
+type UIService struct {
 	Config *config.Config
 
 	UIHandler *UIFileHandler
@@ -32,7 +32,7 @@ func LoadUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
 	return &uiHandler
 }
 
-func setupApplication() *ApplicationState {
+func setup() *UIService {
 	cfg := config.Parse()
 	httpClient, err := client.New(cfg)
 	if err != nil {
@@ -42,19 +42,17 @@ func setupApplication() *ApplicationState {
 	updateManager := NewUpdateManager(cfg, httpClient)
 	uiHandler := LoadUIHandler(cfg, updateManager)
 
-	state := &ApplicationState{
+	return &UIService{
 		Config:        cfg,
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
 		Client:        httpClient,
 	}
-
-	return state
 }
 
 // TODO: think about client timeouts https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 func main() {
-	state := setupApplication()
+	state := setup()
 
 	// Use systemd socket activation.
 	l, err := activation.Listeners()
@@ -80,14 +78,14 @@ func main() {
 }
 
 // Run serves the API based on the Config and Listener provided
-func Run(state *ApplicationState, l net.Listener) error {
+func Run(state *UIService, l net.Listener) error {
 	r := newRouter(state)
 	http.Handle("/", r)
 	return http.Serve(l, r)
 }
 
 // StartSocket if systemd did not provide a socket
-func StartSocket(state *ApplicationState) error {
+func StartSocket(state *UIService) error {
 	listenNet := state.Config.ListenNetProtocol
 	listenAddr := state.Config.ListenNetAddress
 
@@ -100,7 +98,7 @@ func StartSocket(state *ApplicationState) error {
 	return Run(state, l)
 }
 
-func newRouter(state *ApplicationState) *mux.Router {
+func newRouter(state *UIService) *mux.Router {
 	assetPrefix := state.UIHandler.AssetPrefix()
 
 	r := mux.NewRouter()
@@ -117,7 +115,7 @@ func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateHandler processes update requests
-func UpdateHandler(state *ApplicationState) func(http.ResponseWriter, *http.Request) {
+func UpdateHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
 	dcos := Dcos{
 		MasterCountLocation: state.Config.MasterCountFile,
 	}
@@ -163,7 +161,7 @@ func UpdateHandler(state *ApplicationState) func(http.ResponseWriter, *http.Requ
 }
 
 // ResetHandler processes reset requests
-func ResetHandler(state *ApplicationState) func(http.ResponseWriter, *http.Request) {
+func ResetHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// verify we aren't currently serving pre-bundled version
 		if state.Config.ClusterUIPath == state.UIHandler.DocumentRoot() {

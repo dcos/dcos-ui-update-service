@@ -18,7 +18,7 @@ func listen() (net.Listener, error) {
 	return net.Listen("tcp", "127.0.0.1:0")
 }
 
-func makeAppState() *ApplicationState {
+func makeAppState() *UIService {
 	cfg := config.NewDefaultConfig()
 	cfg.ClusterUIPath = "./public"
 	cfg.VersionsRoot = "/ui-versions"
@@ -30,12 +30,11 @@ func makeAppState() *ApplicationState {
 
 	uiHandler := LoadUIHandler(cfg, um)
 
-	state := &ApplicationState{
+	return &UIService{
 		Config:        cfg,
 		UpdateManager: um,
 		UIHandler:     uiHandler,
 	}
-	return state
 }
 
 func TestApplication(t *testing.T) {
