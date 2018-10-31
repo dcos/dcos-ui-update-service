@@ -18,7 +18,7 @@ type Config struct {
 	StaticAssetPrefix string
 
 	// The filesystem path where the cluster pre-bundled UI is stored
-	ClusterUIPath string
+	DefaultDocRoot string
 
 	// The filesystem path where downloaded versions are stored
 	VersionsRoot string
@@ -39,7 +39,7 @@ const (
 	defaultListenAddr        = "/run/dcos/dcos-ui-update-service.sock"
 	defaultAssetPrefix       = "/static/"
 	defaultUniverseURL       = "https://leader.mesos"
-	defaultClusterUIPath     = "/opt/mesosphere/active/dcos-ui/usr"
+	defaultDefaultDocRoot    = "/opt/mesosphere/active/dcos-ui/usr"
 	defaultVersionsRoot      = "./versions"
 	defaultMasterCountFile   = "/opt/mesosphere/etc/master_count"
 )
@@ -66,7 +66,7 @@ func NewDefaultConfig() *Config {
 		defaultListenAddr,
 		defaultUniverseURL,
 		defaultAssetPrefix,
-		defaultClusterUIPath,
+		defaultDefaultDocRoot,
 		defaultVersionsRoot,
 		defaultMasterCountFile,
 		"",
@@ -86,7 +86,7 @@ func Parse() *Config {
 	flag.StringVar(&cfg.ListenNetAddress, optListenAddress, cfg.ListenNetAddress, "The network address at which to listen for connections.")
 	flag.StringVar(&cfg.StaticAssetPrefix, optAssetPrefix, cfg.StaticAssetPrefix, "The URL path at which to host static assets.")
 	flag.StringVar(&cfg.UniverseURL, optUniverseURL, cfg.UniverseURL, "The URL where universe can be reached")
-	flag.StringVar(&cfg.ClusterUIPath, optDefaultUIPath, cfg.ClusterUIPath, "The filesystem path to serve the default UI from (pre-bundled).")
+	flag.StringVar(&cfg.DefaultDocRoot, optDefaultUIPath, cfg.DefaultDocRoot, "The filesystem path to serve the default UI from (pre-bundled).")
 	flag.StringVar(&cfg.VersionsRoot, optVersionsRoot, cfg.VersionsRoot, "The filesystem path where downloaded versions are stored.")
 	flag.StringVar(&cfg.MasterCountFile, optMasterCountFile, cfg.MasterCountFile, "The filesystem path to the file determining the master count.")
 	flag.StringVar(&cfg.CACertFile, optCaCert, cfg.CACertFile, "The filesystem path to the certificate authority file.")

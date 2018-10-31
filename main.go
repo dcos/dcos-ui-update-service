@@ -22,14 +22,15 @@ type UIService struct {
 	Client *client.HTTP
 }
 
-func LoadUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
-	documentRoot := cfg.ClusterUIPath
+// SetupUIHandler create UIFileHandler for service ui and set default directory to
+// the current downloaded version or the default document root
+func SetupUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
+	documentRoot := cfg.DefaultDocRoot
 	currentVersionPath, err := um.GetPathToCurrentVersion()
 	if err == nil {
 		documentRoot = currentVersionPath
 	}
-	uiHandler := NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot)
-	return &uiHandler
+	return NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot)
 }
 
 func setup() *UIService {
@@ -40,7 +41,7 @@ func setup() *UIService {
 		os.Exit(1)
 	}
 	updateManager := NewUpdateManager(cfg, httpClient)
-	uiHandler := LoadUIHandler(cfg, updateManager)
+	uiHandler := SetupUIHandler(cfg, updateManager)
 
 	return &UIService{
 		Config:        cfg,
@@ -164,11 +165,11 @@ func UpdateHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
 func ResetHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// verify we aren't currently serving pre-bundled version
-		if state.Config.ClusterUIPath == state.UIHandler.DocumentRoot() {
+		if state.Config.DefaultDocRoot == state.UIHandler.DocumentRoot() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		err := state.UIHandler.UpdateDocumentRoot(state.Config.ClusterUIPath)
+		err := state.UIHandler.UpdateDocumentRoot(state.Config.DefaultDocRoot)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return

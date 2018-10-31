@@ -18,9 +18,9 @@ func listen() (net.Listener, error) {
 	return net.Listen("tcp", "127.0.0.1:0")
 }
 
-func makeAppState() *UIService {
+func setupUIService() *UIService {
 	cfg := config.NewDefaultConfig()
-	cfg.ClusterUIPath = "./public"
+	cfg.DefaultDocRoot = "./public"
 	cfg.VersionsRoot = "/ui-versions"
 	cfg.MasterCountFile = "./fixtures/single-master"
 
@@ -28,7 +28,7 @@ func makeAppState() *UIService {
 	um.Fs = afero.NewMemMapFs()
 	um.Fs.MkdirAll("/ui-versions", 0755)
 
-	uiHandler := LoadUIHandler(cfg, um)
+	uiHandler := SetupUIHandler(cfg, um)
 
 	return &UIService{
 		Config:        cfg,
@@ -53,10 +53,10 @@ func TestApplication(t *testing.T) {
 	// to stop running and return an error from Run().
 	defer l.Close()
 	// Start a test server.
-	appState := makeAppState()
-	appState.UIHandler.UpdateDocumentRoot("./testdata/docroot/public")
+	service := setupUIService()
+	service.UIHandler.UpdateDocumentRoot("./testdata/docroot/public")
 	go func() {
-		appDoneCh <- Run(appState, l)
+		appDoneCh <- Run(service, l)
 	}()
 	// Yay! we're finally ready to perform requests against our server.
 	addr := "http://" + l.Addr().String()
@@ -73,7 +73,7 @@ func TestApplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	documentRoot := appState.UIHandler.DocumentRoot()
+	documentRoot := service.UIHandler.DocumentRoot()
 	exp, err := ioutil.ReadFile(filepath.Join(documentRoot, "test.html"))
 	if err != nil {
 		t.Fatal(err)
@@ -90,10 +90,10 @@ func TestRouter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		appState := makeAppState()
+		service := setupUIService()
 
 		rr := httptest.NewRecorder()
-		newRouter(appState).ServeHTTP(rr, req)
+		newRouter(service).ServeHTTP(rr, req)
 
 		if status := rr.Code; status != http.StatusOK {
 			t.Errorf("handler returned wrong status code: got %v want %v",
@@ -126,10 +126,10 @@ func TestRouter(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				appState := makeAppState()
+				service := setupUIService()
 
 				rr := httptest.NewRecorder()
-				newRouter(appState).ServeHTTP(rr, req)
+				newRouter(service).ServeHTTP(rr, req)
 
 				if rr.Code != tt.statusCode {
 					t.Errorf("handler for %v returned unexpected statuscode: got %v want %v",
@@ -141,10 +141,10 @@ func TestRouter(t *testing.T) {
 	})
 }
 
-func TestLoadUIHandler(t *testing.T) {
-	t.Run("sets ClusterUIPath as document root if no current version", func(t *testing.T) {
+func TestSetupUIHandler(t *testing.T) {
+	t.Run("sets DefaultDocRoot as document root if no current version", func(t *testing.T) {
 		cfg := config.NewDefaultConfig()
-		cfg.ClusterUIPath = "./public"
+		cfg.DefaultDocRoot = "./public"
 		cfg.VersionsRoot = "/ui-versions"
 		cfg.MasterCountFile = "./fixtures/single-master"
 
@@ -152,10 +152,10 @@ func TestLoadUIHandler(t *testing.T) {
 		um.Fs = afero.NewMemMapFs()
 		um.Fs.MkdirAll("/ui-versions", 0755)
 
-		uiHandler := LoadUIHandler(cfg, um)
+		uiHandler := SetupUIHandler(cfg, um)
 
 		docRoot := uiHandler.DocumentRoot()
-		expected := cfg.ClusterUIPath
+		expected := cfg.DefaultDocRoot
 		if docRoot != expected {
 			t.Errorf("ui handler documentroot set to %v, expected %v", docRoot, expected)
 		}
@@ -163,7 +163,7 @@ func TestLoadUIHandler(t *testing.T) {
 
 	t.Run("sets version as document root if there is a current version", func(t *testing.T) {
 		cfg := config.NewDefaultConfig()
-		cfg.ClusterUIPath = "./public"
+		cfg.DefaultDocRoot = "./public"
 		cfg.VersionsRoot = "/ui-versions"
 		cfg.MasterCountFile = "./fixtures/single-master"
 
@@ -171,7 +171,7 @@ func TestLoadUIHandler(t *testing.T) {
 		um.Fs = afero.NewMemMapFs()
 		um.Fs.MkdirAll("/ui-versions/2.25.3", 0755)
 
-		uiHandler := LoadUIHandler(cfg, um)
+		uiHandler := SetupUIHandler(cfg, um)
 
 		docRoot := uiHandler.DocumentRoot()
 		expected, err := um.GetPathToCurrentVersion()

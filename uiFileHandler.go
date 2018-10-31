@@ -21,10 +21,10 @@ func createFileHandler(assetPrefix, documentRoot string) http.Handler {
 }
 
 // NewUIFileHandler create a new ui file handler that serves file for the given prefix and from the documentRoot
-func NewUIFileHandler(assetPrefix, documentRoot string) UIFileHandler {
+func NewUIFileHandler(assetPrefix, documentRoot string) *UIFileHandler {
 	fileHandler := createFileHandler(assetPrefix, documentRoot)
 
-	return UIFileHandler{
+	return &UIFileHandler{
 		assetPrefix,
 		documentRoot,
 		fileHandler,
