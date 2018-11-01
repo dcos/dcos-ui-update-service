@@ -2,12 +2,10 @@ package client
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/dcos/dcos-go/dcos/http/transport"
 	"github.com/dcos/dcos-ui-update-service/config"
-	"github.com/pkg/errors"
 )
 
 // HTTP is a convenience wrapper around an httpClient
@@ -15,24 +13,6 @@ type HTTP struct {
 	client           *http.Client
 	clientAuthHeader string
 	hasIAM           bool
-}
-
-func (h *HTTP) Read(resp *http.Response, err error) (*HTTPResult, error) {
-	if err != nil {
-		return nil, err
-	}
-	if resp == nil {
-		return nil, errors.New("Nil response received")
-	}
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("Could not read response body: %s", err)
-	}
-	return &HTTPResult{
-		Code: resp.StatusCode,
-		Body: b,
-	}, nil
 }
 
 func (h *HTTP) Do(req *http.Request) (*http.Response, error) {
@@ -69,9 +49,17 @@ func New(cfg *config.Config) (*HTTP, error) {
 		Transport: tr,
 		Timeout:   cfg.HTTPClientTimeout,
 	}
-	return &HTTP{client, "", hasIAM}, nil
+	return &HTTP{
+		client:           client,
+		clientAuthHeader: "",
+		hasIAM:           hasIAM,
+	}, nil
 }
 
 func NewClient(client *http.Client) *HTTP {
-	return &HTTP{client, "", false}
+	return &HTTP{
+		client:           client,
+		clientAuthHeader: "",
+		hasIAM:           false,
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/dcos/dcos-ui-update-service/client"
@@ -82,16 +83,21 @@ func (c *CosmosClient) getPackageAssets(packageName string, packageVersion strin
 	req.Header.Set("accept", "application/vnd.dcos.package.describe-response+json;charset=utf-8;version=v3")
 	req.Header.Set("content-type", "application/vnd.dcos.package.describe-request+json;charset=UTF-8;version=v1")
 
-	result, err := c.client.Read(c.client.Do(req))
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if result.Code != http.StatusOK {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to query cosmos")
 	}
-	json := string(result.Body)
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("could not read response body: %s", err)
+	}
+	json := string(respBody)
 	if !gjson.Valid(json) {
-		return nil, fmt.Errorf("Could not parse JSON")
+		return nil, fmt.Errorf("could not parse JSON")
 	}
 	assets := gjson.Get(json, "package.resource.assets.uris").Value()
 	if assets == nil {

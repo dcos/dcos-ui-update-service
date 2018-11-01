@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func makeMockServer(expectedAuthHeader string) *httptest.Server {
+func makeFakeServer(expectedAuthHeader string) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		receivedAuth := req.Header.Get("Authorization")
 		if receivedAuth != expectedAuthHeader {
@@ -20,9 +20,11 @@ func makeMockServer(expectedAuthHeader string) *httptest.Server {
 }
 
 func TestClientUsesAuth(t *testing.T) {
+	t.Parallel()
+
 	t.Run("uses clientAuthHeader if set", func(t *testing.T) {
 		authValue := "testing123"
-		server := makeMockServer(authValue)
+		server := makeFakeServer(authValue)
 		defer server.Close()
 
 		client := NewClient(server.Client())
@@ -42,8 +44,8 @@ func TestClientUsesAuth(t *testing.T) {
 	})
 
 	t.Run("clears clientAuthHeader as expected", func(t *testing.T) {
-		authValue := ""
-		server := makeMockServer(authValue)
+		var authValue string
+		server := makeFakeServer(authValue)
 		defer server.Close()
 
 		client := NewClient(server.Client())

@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -86,14 +87,19 @@ func (d *Downloader) downloadAndUnpack(fileURL string, targetDirectory string) e
 		return err
 	}
 	req.Header.Set("content-type", "application/octet-stream")
-	result, err := d.client.Read(d.client.Do(req))
+	resp, err := d.client.Do(req)
 	if err != nil {
 		return err
 	}
-	if result.Code != http.StatusOK {
-		return fmt.Errorf("failed to download package %v", result.Code)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download package %v", resp.StatusCode)
 	}
-	err = d.ExtractTarGzToDir(targetDirectory, result.Body)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("could not read response body: %s", err)
+	}
+	err = d.ExtractTarGzToDir(targetDirectory, body)
 	if err != nil {
 		return err
 	}
