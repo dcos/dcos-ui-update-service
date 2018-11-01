@@ -9,6 +9,7 @@ import (
 	"github.com/coreos/go-systemd/activation"
 	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -82,7 +83,8 @@ func main() {
 func Run(state *UIService, l net.Listener) error {
 	r := newRouter(state)
 	http.Handle("/", r)
-	return http.Serve(l, r)
+	loggedRouter := handlers.LoggingHandler(os.Stdout, r)
+	return http.Serve(l, loggedRouter)
 }
 
 // StartSocket if systemd did not provide a socket
@@ -105,8 +107,9 @@ func newRouter(state *UIService) *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/", NotImplementedHandler)
 	r.HandleFunc("/api/v1/update/{version}/", UpdateHandler(state))
-	r.HandleFunc("/api/v1/reset/", ResetHandler(state)).Methods("DELETE")
+	r.HandleFunc("/api/v1/reset/", ResetToDefaultUIHandler(state)).Methods("DELETE")
 	r.PathPrefix(assetPrefix).Handler(state.UIHandler)
+
 	return r
 }
 
@@ -161,8 +164,8 @@ func UpdateHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-// ResetHandler processes reset requests
-func ResetHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
+// ResetToDefaultUIHandler processes requests to reset to the default ui
+func ResetToDefaultUIHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// verify we aren't currently serving pre-bundled version
 		if state.Config.DefaultDocRoot == state.UIHandler.DocumentRoot() {
