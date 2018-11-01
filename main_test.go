@@ -174,7 +174,7 @@ func TestSetupUIHandler(t *testing.T) {
 		uiHandler := SetupUIHandler(cfg, um)
 
 		docRoot := uiHandler.DocumentRoot()
-		expected, err := um.GetPathToCurrentVersion()
+		expected, err := um.PathToCurrentVersion()
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -27,7 +27,7 @@ type UIService struct {
 // the current downloaded version or the default document root
 func SetupUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
 	documentRoot := cfg.DefaultDocRoot
-	currentVersionPath, err := um.GetPathToCurrentVersion()
+	currentVersionPath, err := um.PathToCurrentVersion()
 	if err == nil {
 		documentRoot = currentVersionPath
 	}

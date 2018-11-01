@@ -210,7 +210,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 	})
 }
 
-func TestUpdateManagerGetCurrentVersion(t *testing.T) {
+func TestUpdateManagerCurrentVersion(t *testing.T) {
 	t.Parallel()
 
 	t.Run("throws error if the VersionPath directory does not exist", func(t *testing.T) {
@@ -228,7 +228,7 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 			Fs:          fs,
 		}
 
-		_, err := loader.GetCurrentVersion()
+		_, err := loader.CurrentVersion()
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -251,7 +251,7 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 		}
 
 		fs.MkdirAll("/ui-versions", 0755)
-		ver, err := loader.GetCurrentVersion()
+		ver, err := loader.CurrentVersion()
 
 		if err != nil {
 			t.Fatalf("returned error when not expecting it %v", err)
@@ -277,7 +277,7 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 		}
 
 		fs.MkdirAll("/ui-versions/2.25.3", 0755)
-		result, err := loader.GetCurrentVersion()
+		result, err := loader.CurrentVersion()
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %#v", err)
@@ -305,7 +305,7 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 
 		fs.MkdirAll("/ui-versions/2.25.3", 0755)
 		fs.MkdirAll("/ui-versions/2.25.7", 0755)
-		_, err := loader.GetCurrentVersion()
+		_, err := loader.CurrentVersion()
 
 		if err == nil {
 			t.Fatalf("Expected an error, got nil")
@@ -313,7 +313,7 @@ func TestUpdateManagerGetCurrentVersion(t *testing.T) {
 	})
 }
 
-func TestUpdateManagerGetPathToCurrentVersion(t *testing.T) {
+func TestUpdateManagerPathToCurrentVersion(t *testing.T) {
 	t.Parallel()
 
 	t.Run("returns path to version", func(t *testing.T) {
@@ -332,7 +332,7 @@ func TestUpdateManagerGetPathToCurrentVersion(t *testing.T) {
 		}
 
 		fs.MkdirAll("/ui-versions/2.25.3", 0755)
-		result, err := loader.GetPathToCurrentVersion()
+		result, err := loader.PathToCurrentVersion()
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %#v", err)
@@ -359,7 +359,7 @@ func TestUpdateManagerGetPathToCurrentVersion(t *testing.T) {
 		}
 
 		fs.MkdirAll("/ui-versions", 0755)
-		_, err := loader.GetPathToCurrentVersion()
+		_, err := loader.PathToCurrentVersion()
 
 		if err == nil {
 			t.Error("did not return an error for an empty versions dir")

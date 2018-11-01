@@ -76,8 +76,8 @@ func (um *UpdateManager) LoadVersion(version string, targetDirectory string) err
 	return nil
 }
 
-// GetCurrentVersion retrieves the current version of the package
-func (um *UpdateManager) GetCurrentVersion() (string, error) {
+// CurrentVersion retrieves the current version of the package
+func (um *UpdateManager) CurrentVersion() (string, error) {
 	exists, err := afero.DirExists(um.Fs, um.VersionPath)
 
 	if !exists || err != nil {
@@ -110,10 +110,10 @@ func (um *UpdateManager) GetCurrentVersion() (string, error) {
 	return dirs[0], nil
 }
 
-// GetPathToCurrentVersion return the filesystem path to the current UI version
+// PathToCurrentVersion return the filesystem path to the current UI version
 // or returns an error is the current version cannot be determined
-func (um *UpdateManager) GetPathToCurrentVersion() (string, error) {
-	currentVersion, err := um.GetCurrentVersion()
+func (um *UpdateManager) PathToCurrentVersion() (string, error) {
+	currentVersion, err := um.CurrentVersion()
 	if err != nil {
 		return "", err
 	}
@@ -128,7 +128,7 @@ func (um *UpdateManager) GetPathToCurrentVersion() (string, error) {
 // UpdateToVersion updates the ui to the given version
 func (um *UpdateManager) UpdateToVersion(version string, fileServer UIFileServer) error {
 	// Find out which version we currently have
-	currentVersion, err := um.GetCurrentVersion()
+	currentVersion, err := um.CurrentVersion()
 
 	if err != nil {
 		return errors.Wrap(err, "Could not get current version")
@@ -172,7 +172,7 @@ func (um *UpdateManager) UpdateToVersion(version string, fileServer UIFileServer
 }
 
 func (um *UpdateManager) ResetVersion() error {
-	currentVersion, err := um.GetCurrentVersion()
+	currentVersion, err := um.CurrentVersion()
 
 	if err != nil {
 		return errors.Wrap(err, "Could not get current version")
