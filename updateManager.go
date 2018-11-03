@@ -16,7 +16,7 @@ import (
 type UpdateManager struct {
 	Cosmos      *CosmosClient
 	Loader      Downloader
-	UniverseURL string // maybe use url instead of string
+	UniverseURL *url.URL
 	VersionPath string
 	Fs          afero.Fs
 	client      *client.HTTP
@@ -28,10 +28,14 @@ func (l *ListVersionResponse) includesTargetVersion(version string) bool {
 
 // NewUpdateManager creates a new instance of UpdateManager
 func NewUpdateManager(cfg *config.Config, httpClient *client.HTTP) (*UpdateManager, error) {
+	universeURL, err := url.Parse(cfg.UniverseURL)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse configured Universe URL")
+	}
 	fs := afero.NewOsFs()
 	cosmos, err := NewCosmosClient(httpClient, cfg.UniverseURL)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create cosmosclient with universe url provided")
+		return nil, errors.Wrap(err, "failed to create cosmos client with universe url provided")
 	}
 
 	return &UpdateManager{
@@ -40,7 +44,7 @@ func NewUpdateManager(cfg *config.Config, httpClient *client.HTTP) (*UpdateManag
 			client: httpClient,
 			Fs:     fs,
 		},
-		UniverseURL: cfg.UniverseURL,
+		UniverseURL: universeURL,
 		VersionPath: cfg.VersionsRoot,
 		Fs:          fs,
 		client:      httpClient,
