@@ -68,7 +68,7 @@ func TestCosmosListVersions(t *testing.T) {
 			t.Fatalf("Expected no error, got %q", err.Error())
 		}
 
-		resp, err := cosmos.listPackageVersions("dcos-ui")
+		resp, err := cosmos.ListPackageVersions("dcos-ui")
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %q", err.Error())
@@ -93,7 +93,7 @@ func TestCosmosListVersions(t *testing.T) {
 			t.Fatalf("Expected no error, got %q", err.Error())
 		}
 
-		_, err = cosmos.listPackageVersions("dcos-ui")
+		_, err = cosmos.ListPackageVersions("dcos-ui")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -112,7 +112,7 @@ func TestCosmosListVersions(t *testing.T) {
 			t.Fatalf("Expected no error, got %q", err.Error())
 		}
 
-		_, err = cosmos.listPackageVersions("dcos-ui")
+		_, err = cosmos.ListPackageVersions("dcos-ui")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -182,7 +182,7 @@ func TestCosmosDetail(t *testing.T) {
 			t.Fatalf("Expected no error, got %q", err.Error())
 		}
 
-		resp, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
+		resp, err := cosmos.GetPackageAssets("dcos-ui", "2.25.0")
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %q", err.Error())
@@ -208,7 +208,7 @@ func TestCosmosDetail(t *testing.T) {
 			t.Fatalf("Expected no error, got %q", err.Error())
 		}
 
-		_, err = cosmos.getPackageAssets("dcos-ui", "2.25.0")
+		_, err = cosmos.GetPackageAssets("dcos-ui", "2.25.0")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -227,7 +227,7 @@ func TestCosmosDetail(t *testing.T) {
 			t.Fatalf("Expected no error, got %q", err.Error())
 		}
 
-		_, err = cosmos.getPackageAssets("dcos-ui", "2.25.0")
+		_, err = cosmos.GetPackageAssets("dcos-ui", "2.25.0")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -253,7 +253,7 @@ func TestCosmosDetail(t *testing.T) {
 			t.Fatalf("Expected no error, got %q", err.Error())
 		}
 
-		_, err = cosmos.getPackageAssets("dcos-ui", "2.25.0")
+		_, err = cosmos.GetPackageAssets("dcos-ui", "2.25.0")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")

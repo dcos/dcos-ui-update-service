@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
 	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/pkg/errors"
-	"github.com/tidwall/gjson"
 )
 
 // CosmosClient abstracts common API calls against Cosmos
@@ -36,9 +34,35 @@ type PackageDetailRequest struct {
 	PackageVersion string `json:"packageVersion"`
 }
 
+type PackageDetailResponse struct {
+	Package struct {
+		PackagingVersion      string            `json:"packagingVersion"`
+		Name                  string            `json:"name"`
+		Version               string            `json:"version"`
+		ReleaseVersion        int               `json:"releaseVersion"`
+		Maintainer            string            `json:"maintainer"`
+		Description           string            `json:"description"`
+		Tags                  []string          `json:"tags"`
+		Scm                   string            `json:"scm"`
+		Website               string            `json:"website"`
+		Framework             bool              `json:"framework"`
+		MinDcosReleaseVersion string            `json:"minDcosReleaseVersion"`
+		Marathon              map[string]string `json:"marathon"`
+		Resource              struct {
+			Assets struct {
+				Uris map[string]string `json:"uris"`
+			} `json:"assets"`
+		} `json:"resource"`
+		Config struct {
+			Type       string            `json:"type"`
+			Properties map[string]string `json:"properties"`
+		} `json:"config"`
+	} `json:"package"`
+}
+
 // TODO: think about if we can use the roundtripper api to set the headers in an easier way
 // TODO: think about credentials and how we use them (forward maybe?)
-func (c *CosmosClient) listPackageVersions(packageName string) (*ListVersionResponse, error) {
+func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResponse, error) {
 	listVersionReq := ListVersionRequest{IncludePackageVersions: true, PackageName: "dcos-ui"}
 	body := new(bytes.Buffer)
 	err := json.NewEncoder(body).Encode(listVersionReq)
@@ -71,7 +95,7 @@ func (c *CosmosClient) listPackageVersions(packageName string) (*ListVersionResp
 	return &response, nil
 }
 
-func (c *CosmosClient) getPackageAssets(packageName string, packageVersion string) (map[string]string, error) {
+func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion string) (map[string]string, error) {
 	packageDetailReq := PackageDetailRequest{PackageName: packageName, PackageVersion: packageVersion}
 	body := new(bytes.Buffer)
 	err := json.NewEncoder(body).Encode(packageDetailReq)
@@ -94,27 +118,18 @@ func (c *CosmosClient) getPackageAssets(packageName string, packageVersion strin
 		return nil, fmt.Errorf("failed to query cosmos")
 	}
 	defer resp.Body.Close()
-	respBody, err := ioutil.ReadAll(resp.Body)
+	var response PackageDetailResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		return nil, fmt.Errorf("could not read response body: %s", err)
+		return nil, errors.Wrap(err, "could not decode package detail response")
 	}
-	json := string(respBody)
-	if !gjson.Valid(json) {
-		return nil, fmt.Errorf("could not parse JSON")
-	}
-	assets := gjson.Get(json, "package.resource.assets.uris").Value()
-	if assets == nil {
+	assets := response.Package.Resource.Assets.Uris
+
+	if len(assets) == 0 {
 		return nil, fmt.Errorf("Could not get asset uris from JSON: %#v", assets)
 	}
-	castedAssets := assets.(map[string]interface{})
 
-	stringifyResult := make(map[string]string)
-
-	for key, value := range castedAssets {
-		stringifyResult[key] = fmt.Sprintf("%v", value)
-	}
-
-	return stringifyResult, nil
+	return assets, nil
 }
 
 func NewCosmosClient(client *client.HTTP, universeURL string) (*CosmosClient, error) {

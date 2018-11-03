@@ -53,7 +53,7 @@ func NewUpdateManager(cfg *config.Config, httpClient *client.HTTP) (*UpdateManag
 
 // LoadVersion downloads the given DC/OS UI version to the target directory.
 func (um *UpdateManager) LoadVersion(version string, targetDirectory string) error {
-	listVersionResp, listErr := um.Cosmos.listPackageVersions("dcos-ui")
+	listVersionResp, listErr := um.Cosmos.ListPackageVersions("dcos-ui")
 	if listErr != nil {
 		return fmt.Errorf("Could not reach the server: %#v", listErr)
 	}
@@ -66,7 +66,7 @@ func (um *UpdateManager) LoadVersion(version string, targetDirectory string) err
 		return fmt.Errorf("%q is no directory", targetDirectory)
 	}
 
-	assets, getAssetsErr := um.Cosmos.getPackageAssets("dcos-ui", version)
+	assets, getAssetsErr := um.Cosmos.GetPackageAssets("dcos-ui", version)
 	if getAssetsErr != nil {
 		return errors.Wrap(getAssetsErr, "Could not reach the server")
 	}
