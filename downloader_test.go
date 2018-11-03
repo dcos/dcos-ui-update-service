@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/dcos/dcos-ui-update-service/client"
@@ -29,8 +30,8 @@ func TestDownloader(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Could not create a tmp dir")
 			}
-
-			err = loader.downloadAndUnpack(server.URL, dest)
+			serverURL, _ := url.Parse(server.URL)
+			err = loader.downloadAndUnpack(serverURL, dest)
 
 			if err != nil {
 				t.Fatalf("Should not have thrown an error, got %#v", err)
@@ -61,7 +62,8 @@ func TestDownloader(t *testing.T) {
 				t.Fatalf("Could not create a tmp dir")
 			}
 
-			err = loader.downloadAndUnpack("http://unknown", dest)
+			downloadURL, _ := url.Parse("http://unknown")
+			err = loader.downloadAndUnpack(downloadURL, dest)
 
 			if err == nil {
 				t.Fatalf("Should have thrown an error, got none")
@@ -86,7 +88,8 @@ func TestDownloader(t *testing.T) {
 				t.Fatalf("Could not create a tmp dir")
 			}
 
-			err = loader.downloadAndUnpack("http://unknown", dest)
+			downloadURL, _ := url.Parse("http://unknown")
+			err = loader.downloadAndUnpack(downloadURL, dest)
 
 			if err == nil {
 				t.Fatalf("Should have thrown an error, got none")

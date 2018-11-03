@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 
@@ -67,13 +68,16 @@ func (um *UpdateManager) LoadVersion(version string, targetDirectory string) err
 	}
 
 	uiBundleName := "dcos-ui-bundle"
-	uiBundleURI := assets[uiBundleName]
-
-	if len(uiBundleURI) == 0 {
-		return fmt.Errorf("Could not find asset with the name %q in %#v", uiBundleName, assets)
+	uiBundleURI, found := assets[uiBundleName]
+	if !found {
+		return fmt.Errorf("Could not find asset with the name %s", uiBundleName)
+	}
+	uiBundleURL, err := url.Parse(uiBundleURI)
+	if err != nil {
+		return errors.Wrap(err, "ui bundle URI could not be parsed to a URL")
 	}
 
-	if umErr := um.Loader.downloadAndUnpack(uiBundleURI, targetDirectory); umErr != nil {
+	if umErr := um.Loader.downloadAndUnpack(uiBundleURL, targetDirectory); umErr != nil {
 		return errors.Wrap(umErr, fmt.Sprintf("Could not load %q", uiBundleURI))
 	}
 

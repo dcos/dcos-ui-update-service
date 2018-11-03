@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -81,8 +82,8 @@ func (d Downloader) ExtractTarGzToDir(dest string, payload []byte) error {
 	}
 }
 
-func (d *Downloader) downloadAndUnpack(fileURL string, targetDirectory string) error {
-	req, err := http.NewRequest("GET", fileURL, nil)
+func (d *Downloader) downloadAndUnpack(fileURL *url.URL, targetDirectory string) error {
+	req, err := http.NewRequest("GET", fileURL.String(), nil)
 	if err != nil {
 		return err
 	}
