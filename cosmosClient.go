@@ -6,15 +6,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/dcos/dcos-ui-update-service/client"
+	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
 )
 
 // CosmosClient abstracts common API calls against Cosmos
 type CosmosClient struct {
 	client      *client.HTTP
-	UniverseURL string // maybe use url instead of string
+	UniverseURL *url.URL
 }
 
 // ListVersionResponse is the parsed result of /package/list-versions requests
@@ -45,7 +47,7 @@ func (c *CosmosClient) listPackageVersions(packageName string) (*ListVersionResp
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", c.UniverseURL+"/package/list-versions", body)
+	req, err := http.NewRequest("POST", c.UniverseURL.String()+"/package/list-versions", body)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +78,8 @@ func (c *CosmosClient) getPackageAssets(packageName string, packageVersion strin
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", c.UniverseURL+"/package/describe", body)
+
+	req, err := http.NewRequest("POST", c.UniverseURL.String()+"/package/describe", body)
 	if err != nil {
 		return nil, err
 	}
@@ -114,9 +117,14 @@ func (c *CosmosClient) getPackageAssets(packageName string, packageVersion strin
 	return stringifyResult, nil
 }
 
-func NewCosmosClient(client *client.HTTP, universeURL string) CosmosClient {
-	return CosmosClient{
-		client:      client,
-		UniverseURL: universeURL,
+func NewCosmosClient(client *client.HTTP, universeURL string) (*CosmosClient, error) {
+	parsedURL, err := url.Parse(universeURL)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing universe URL for cosmos client")
 	}
+
+	return &CosmosClient{
+		client:      client,
+		UniverseURL: parsedURL,
+	}, nil
 }

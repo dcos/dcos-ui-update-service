@@ -11,7 +11,7 @@ import (
 	"github.com/dcos/dcos-ui-update-service/client"
 )
 
-func makeTestClient(server *httptest.Server) CosmosClient {
+func makeTestClient(server *httptest.Server) (*CosmosClient, error) {
 	return NewCosmosClient(client.NewClient(server.Client()), server.URL)
 }
 
@@ -63,7 +63,10 @@ func TestCosmosListVersions(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := makeTestClient(server)
+		cosmos, err := makeTestClient(server)
+		if err != nil {
+			t.Fatalf("Expected no error, got %q", err.Error())
+		}
 
 		resp, err := cosmos.listPackageVersions("dcos-ui")
 
@@ -85,9 +88,12 @@ func TestCosmosListVersions(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := makeTestClient(server)
+		cosmos, err := makeTestClient(server)
+		if err != nil {
+			t.Fatalf("Expected no error, got %q", err.Error())
+		}
 
-		_, err := cosmos.listPackageVersions("dcos-ui")
+		_, err = cosmos.listPackageVersions("dcos-ui")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -101,9 +107,12 @@ func TestCosmosListVersions(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := makeTestClient(server)
+		cosmos, err := makeTestClient(server)
+		if err != nil {
+			t.Fatalf("Expected no error, got %q", err.Error())
+		}
 
-		_, err := cosmos.listPackageVersions("dcos-ui")
+		_, err = cosmos.listPackageVersions("dcos-ui")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -168,7 +177,10 @@ func TestCosmosDetail(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := makeTestClient(server)
+		cosmos, err := makeTestClient(server)
+		if err != nil {
+			t.Fatalf("Expected no error, got %q", err.Error())
+		}
 
 		resp, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
 
@@ -191,9 +203,12 @@ func TestCosmosDetail(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := makeTestClient(server)
+		cosmos, err := makeTestClient(server)
+		if err != nil {
+			t.Fatalf("Expected no error, got %q", err.Error())
+		}
 
-		_, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
+		_, err = cosmos.getPackageAssets("dcos-ui", "2.25.0")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -207,9 +222,12 @@ func TestCosmosDetail(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := makeTestClient(server)
+		cosmos, err := makeTestClient(server)
+		if err != nil {
+			t.Fatalf("Expected no error, got %q", err.Error())
+		}
 
-		_, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
+		_, err = cosmos.getPackageAssets("dcos-ui", "2.25.0")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -230,9 +248,12 @@ func TestCosmosDetail(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos := makeTestClient(server)
+		cosmos, err := makeTestClient(server)
+		if err != nil {
+			t.Fatalf("Expected no error, got %q", err.Error())
+		}
 
-		_, err := cosmos.getPackageAssets("dcos-ui", "2.25.0")
+		_, err = cosmos.getPackageAssets("dcos-ui", "2.25.0")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")

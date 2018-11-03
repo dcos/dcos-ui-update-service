@@ -13,7 +13,7 @@ import (
 
 // UpdateManager handles access to common setup question
 type UpdateManager struct {
-	Cosmos      CosmosClient
+	Cosmos      *CosmosClient
 	Loader      Downloader
 	UniverseURL string // maybe use url instead of string
 	VersionPath string
@@ -26,11 +26,15 @@ func (l *ListVersionResponse) includesTargetVersion(version string) bool {
 }
 
 // NewUpdateManager creates a new instance of UpdateManager
-func NewUpdateManager(cfg *config.Config, httpClient *client.HTTP) *UpdateManager {
+func NewUpdateManager(cfg *config.Config, httpClient *client.HTTP) (*UpdateManager, error) {
 	fs := afero.NewOsFs()
+	cosmos, err := NewCosmosClient(httpClient, cfg.UniverseURL)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create cosmosclient with universe url provided")
+	}
 
 	return &UpdateManager{
-		Cosmos: NewCosmosClient(httpClient, cfg.UniverseURL),
+		Cosmos: cosmos,
 		Loader: Downloader{
 			client: httpClient,
 			Fs:     fs,
@@ -39,7 +43,7 @@ func NewUpdateManager(cfg *config.Config, httpClient *client.HTTP) *UpdateManage
 		VersionPath: cfg.VersionsRoot,
 		Fs:          fs,
 		client:      httpClient,
-	}
+	}, nil
 }
 
 // LoadVersion downloads the given DC/OS UI version to the target directory.

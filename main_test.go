@@ -24,7 +24,7 @@ func setupUIService() *UIService {
 	cfg.VersionsRoot = "/ui-versions"
 	cfg.MasterCountFile = "./fixtures/single-master"
 
-	um := NewUpdateManager(cfg, &client.HTTP{})
+	um, _ := NewUpdateManager(cfg, &client.HTTP{})
 	um.Fs = afero.NewMemMapFs()
 	um.Fs.MkdirAll("/ui-versions", 0755)
 
@@ -148,7 +148,7 @@ func TestSetupUIHandler(t *testing.T) {
 		cfg.VersionsRoot = "/ui-versions"
 		cfg.MasterCountFile = "./fixtures/single-master"
 
-		um := NewUpdateManager(cfg, &client.HTTP{})
+		um, _ := NewUpdateManager(cfg, &client.HTTP{})
 		um.Fs = afero.NewMemMapFs()
 		um.Fs.MkdirAll("/ui-versions", 0755)
 
@@ -167,7 +167,7 @@ func TestSetupUIHandler(t *testing.T) {
 		cfg.VersionsRoot = "/ui-versions"
 		cfg.MasterCountFile = "./fixtures/single-master"
 
-		um := NewUpdateManager(cfg, &client.HTTP{})
+		um, _ := NewUpdateManager(cfg, &client.HTTP{})
 		um.Fs = afero.NewMemMapFs()
 		um.Fs.MkdirAll("/ui-versions/2.25.3", 0755)
 

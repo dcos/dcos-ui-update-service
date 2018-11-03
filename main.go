@@ -11,6 +11,7 @@ import (
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 type UIService struct {
@@ -34,14 +35,17 @@ func SetupUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
 	return NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot)
 }
 
-func setup() *UIService {
+func setup() (*UIService, error) {
 	cfg := config.Parse()
 	httpClient, err := client.New(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not build http client: %s", err.Error())
 		os.Exit(1)
 	}
-	updateManager := NewUpdateManager(cfg, httpClient)
+	updateManager, err := NewUpdateManager(cfg, httpClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create update manager")
+	}
 	uiHandler := SetupUIHandler(cfg, updateManager)
 
 	return &UIService{
@@ -49,48 +53,54 @@ func setup() *UIService {
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
 		Client:        httpClient,
-	}
+	}, nil
 }
 
 // TODO: think about client timeouts https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 func main() {
-	state := setup()
+	service, err := setup()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initiate ui service, %s", err.Error())
+		os.Exit(1)
+	}
 
 	// Use systemd socket activation.
 	l, err := activation.Listeners()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to activate listeners from systemd, will use configured protocol and address instead, %s", err.Error())
+		fmt.Fprintf(os.Stderr, "Failed to activate listeners from systemd, %s", err.Error())
 		os.Exit(1)
 	}
 
 	if len(l) == 1 {
 		// Run application
-		if err := Run(state, l[0]); err != nil {
+		if err := Run(service, l[0]); err != nil {
 			fmt.Fprintf(os.Stderr, "Application error: %s", err.Error())
 			os.Exit(1)
 		}
 		return
 	}
-
+	fmt.Println("Did not receive any listeners from systemd, will start with configured listener instead.")
 	// Start socket
-	if err := StartSocket(state); err != nil {
+	if err := StartSocket(service); err != nil {
+
 		fmt.Fprintf(os.Stderr, "Application error: %s", err.Error())
 		os.Exit(1)
 	}
 }
 
 // Run serves the API based on the Config and Listener provided
-func Run(state *UIService, l net.Listener) error {
-	r := newRouter(state)
+func Run(service *UIService, l net.Listener) error {
+	r := newRouter(service)
 	http.Handle("/", r)
 	loggedRouter := handlers.LoggingHandler(os.Stdout, r)
 	return http.Serve(l, loggedRouter)
 }
 
 // StartSocket if systemd did not provide a socket
-func StartSocket(state *UIService) error {
-	listenNet := state.Config.ListenNetProtocol
-	listenAddr := state.Config.ListenNetAddress
+
+func StartSocket(service *UIService) error {
+	listenNet := service.Config.ListenNetProtocol
+	listenAddr := service.Config.ListenNetAddress
 
 	l, err := net.Listen(listenNet, listenAddr)
 	fmt.Fprintf(os.Stderr, "Starting new socket using net: %q and Addr: %q\n", listenNet, listenAddr)
@@ -98,17 +108,17 @@ func StartSocket(state *UIService) error {
 		fmt.Fprintf(os.Stderr, "Cannot listen for %q connections at address %q: %s \n", listenNet, listenAddr, err.Error())
 		os.Exit(1)
 	}
-	return Run(state, l)
+	return Run(service, l)
 }
 
-func newRouter(state *UIService) *mux.Router {
-	assetPrefix := state.UIHandler.AssetPrefix()
+func newRouter(service *UIService) *mux.Router {
+	assetPrefix := service.UIHandler.AssetPrefix()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/", NotImplementedHandler)
-	r.HandleFunc("/api/v1/update/{version}/", UpdateHandler(state))
-	r.HandleFunc("/api/v1/reset/", ResetToDefaultUIHandler(state)).Methods("DELETE")
-	r.PathPrefix(assetPrefix).Handler(state.UIHandler)
+	r.HandleFunc("/api/v1/update/{version}/", UpdateHandler(service))
+	r.HandleFunc("/api/v1/reset/", ResetToDefaultUIHandler(service)).Methods("DELETE")
+	r.PathPrefix(assetPrefix).Handler(service.UIHandler)
 
 	return r
 }
@@ -119,9 +129,9 @@ func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateHandler processes update requests
-func UpdateHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
+func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
 	dcos := Dcos{
-		MasterCountLocation: state.Config.MasterCountFile,
+		MasterCountLocation: service.Config.MasterCountFile,
 	}
 
 	isMultiMaster, err := dcos.IsMultiMaster()
@@ -148,11 +158,11 @@ func UpdateHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
 		}
 		clientAuth := r.Header.Get("Authorization")
 		if clientAuth != "" {
-			state.Client.SetClientAuth(clientAuth)
-			defer state.Client.ClearClientAuth()
+			service.Client.SetClientAuth(clientAuth)
+			defer service.Client.ClearClientAuth()
 		}
 
-		err := state.UpdateManager.UpdateToVersion(version, state.UIHandler)
+		err := service.UpdateManager.UpdateToVersion(version, service.UIHandler)
 
 		if err != nil {
 			// This returns locked on every error, it would be better if we would return a boolean if the process is locked
