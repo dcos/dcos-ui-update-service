@@ -68,7 +68,7 @@ func (d Downloader) ExtractTarGzToDir(dest string, payload []byte) error {
 
 		// if it's a file create it
 		case tar.TypeReg:
-			f, err := d.Fs.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			f, err := d.Fs.OpenFile(target, os.O_CREATE|os.O_RDWR, 0755)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("error opening file for writing %s", target))
 			}
