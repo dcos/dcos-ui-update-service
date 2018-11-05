@@ -66,18 +66,16 @@ type PackageDetailResponse struct {
 	} `json:"package"`
 }
 
-// TODO: think about if we can use the roundtripper api to set the headers in an easier way
-// TODO: think about credentials and how we use them (forward maybe?)
+// ListPackageVersions retrieves a list of package versions from Cosmos matching the packageName provided
 func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResponse, error) {
 	listVersionReq := ListVersionRequest{IncludePackageVersions: true, PackageName: "dcos-ui"}
-	body := new(bytes.Buffer)
-	err := json.NewEncoder(body).Encode(listVersionReq)
+	body, err := json.Marshal(listVersionReq)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not create json body from ListVersionRequest")
 	}
 
-	req, err := http.NewRequest("POST", c.UniverseURL.String()+"/package/list-versions", body)
+	req, err := http.NewRequest("POST", c.UniverseURL.String()+"/package/list-versions", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
@@ -101,17 +99,17 @@ func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResp
 	return &response, nil
 }
 
+// GetPackageAssets retrieves the package assets from Cosmos matching the packageName and packageVersion provided
 func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion string) (map[PackageAssetNameString]PackageAssetURIString, error) {
 	packageDetailReq := PackageDetailRequest{PackageName: packageName, PackageVersion: packageVersion}
-	body := new(bytes.Buffer)
-	err := json.NewEncoder(body).Encode(packageDetailReq)
+	body, err := json.Marshal(packageDetailReq)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", c.UniverseURL.String()+"/package/describe", body)
+	req, err := http.NewRequest("POST", c.UniverseURL.String()+"/package/describe", bytes.NewBuffer(body))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not create json body from PackageDetailRequest")
 	}
 	req.Header.Set("accept", "application/vnd.dcos.package.describe-response+json;charset=utf-8;version=v3")
 	req.Header.Set("content-type", "application/vnd.dcos.package.describe-request+json;charset=UTF-8;version=v1")
