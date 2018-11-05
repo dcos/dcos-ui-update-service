@@ -5,13 +5,13 @@ import (
 	"testing"
 )
 
-func TestDcos(t *testing.T) {
+func TestDCOS(t *testing.T) {
 	t.Run("Multi-Master", func(t *testing.T) {
 		t.Parallel()
 
 		// TODO: move to table driven tests
 		t.Run("throws if the file is not found", func(t *testing.T) {
-			system := Dcos{
+			system := DCOS{
 				MasterCountLocation: "fixtures/non-existant",
 			}
 
@@ -26,7 +26,7 @@ func TestDcos(t *testing.T) {
 		})
 
 		t.Run("throws if the file is empty", func(t *testing.T) {
-			system := Dcos{
+			system := DCOS{
 				MasterCountLocation: "fixtures/empty",
 			}
 
@@ -41,7 +41,7 @@ func TestDcos(t *testing.T) {
 		})
 
 		t.Run("returns true if there is a number bigger than 1", func(t *testing.T) {
-			system := Dcos{
+			system := DCOS{
 				MasterCountLocation: "fixtures/multi-master",
 			}
 
@@ -56,7 +56,7 @@ func TestDcos(t *testing.T) {
 		})
 
 		t.Run("returns false if there is only one master", func(t *testing.T) {
-			system := Dcos{
+			system := DCOS{
 				MasterCountLocation: "fixtures/single-master",
 			}
 

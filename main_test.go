@@ -34,6 +34,9 @@ func setupUIService() *UIService {
 		Config:        cfg,
 		UpdateManager: um,
 		UIHandler:     uiHandler,
+		MasterCounter: DCOS{
+			MasterCountLocation: cfg.MasterCountFile,
+		},
 	}
 }
 

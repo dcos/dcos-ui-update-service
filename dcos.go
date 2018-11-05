@@ -6,13 +6,17 @@ import (
 	"strconv"
 )
 
-// Dcos handles access to common setup question
-type Dcos struct {
+// DCOS handles access to common setup question
+type DCOS struct {
 	MasterCountLocation string
 }
 
+type MasterCounter interface {
+	IsMultiMaster() (bool, error)
+}
+
 // IsMultiMaster returns true if there is more than one master node
-func (d Dcos) IsMultiMaster() (bool, error) {
+func (d DCOS) IsMultiMaster() (bool, error) {
 	file, err := ioutil.ReadFile(d.MasterCountLocation)
 
 	if err != nil {

@@ -21,6 +21,8 @@ type UIService struct {
 
 	UpdateManager *UpdateManager
 
+	MasterCounter MasterCounter
+
 	Client *our_http.Client
 }
 
@@ -47,12 +49,16 @@ func setup(args []string) (*UIService, error) {
 		return nil, errors.Wrap(err, "failed to create update manager")
 	}
 	uiHandler := SetupUIHandler(cfg, updateManager)
+	dcos := DCOS{
+		MasterCountLocation: cfg.MasterCountFile,
+	}
 
 	return &UIService{
 		Config:        cfg,
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
 		Client:        httpClient,
+		MasterCounter: dcos,
 	}, nil
 }
 
@@ -131,11 +137,7 @@ func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {
 
 // UpdateHandler processes update requests
 func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
-	dcos := Dcos{
-		MasterCountLocation: service.Config.MasterCountFile,
-	}
-
-	isMultiMaster, err := dcos.IsMultiMaster()
+	isMultiMaster, err := service.MasterCounter.IsMultiMaster()
 	if err != nil {
 		fmt.Printf("Error checking for multi master setup: %#v", err)
 		return func(w http.ResponseWriter, r *http.Request) {
