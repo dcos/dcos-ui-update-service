@@ -6,8 +6,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/dcos/dcos-ui-update-service/http"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 )
@@ -19,7 +19,7 @@ type UpdateManager struct {
 	UniverseURL *url.URL
 	VersionPath string
 	Fs          afero.Fs
-	client      *client.HTTP
+	client      *http.Client
 }
 
 func (l *ListVersionResponse) includesTargetVersion(version string) bool {
@@ -28,7 +28,7 @@ func (l *ListVersionResponse) includesTargetVersion(version string) bool {
 }
 
 // NewUpdateManager creates a new instance of UpdateManager
-func NewUpdateManager(cfg *config.Config, httpClient *client.HTTP) (*UpdateManager, error) {
+func NewUpdateManager(cfg *config.Config, httpClient *http.Client) (*UpdateManager, error) {
 	universeURL, err := url.Parse(cfg.UniverseURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse configured Universe URL")

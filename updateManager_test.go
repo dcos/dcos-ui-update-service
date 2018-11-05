@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dcos/dcos-ui-update-service/client"
+	our_http "github.com/dcos/dcos-ui-update-service/http"
 	"github.com/spf13/afero"
 )
 
@@ -93,7 +93,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		server := httptest.NewServer(defaultHandler)
 		// Close the server when test finishes
 		defer server.Close()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), "http://example.com")
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), "http://example.com")
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -101,7 +101,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -122,7 +122,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -130,7 +130,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -150,7 +150,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		server := httptest.NewServer(defaultHandler)
 		// Close the server when test finishes
 		defer server.Close()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -158,7 +158,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -178,7 +178,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		server := httptest.NewServer(defaultHandler)
 		// Close the server when test finishes
 		defer server.Close()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -186,7 +186,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -206,7 +206,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		server := httptest.NewServer(defaultHandler)
 		// Close the server when test finishes
 		defer server.Close()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -214,7 +214,7 @@ func TestUpdateManagerLoadVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			Fs: afero.NewMemMapFs(),
 		}
@@ -239,7 +239,7 @@ func TestUpdateManagerCurrentVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -247,7 +247,7 @@ func TestUpdateManagerCurrentVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -265,7 +265,7 @@ func TestUpdateManagerCurrentVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -273,7 +273,7 @@ func TestUpdateManagerCurrentVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -295,7 +295,7 @@ func TestUpdateManagerCurrentVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -303,7 +303,7 @@ func TestUpdateManagerCurrentVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -326,7 +326,7 @@ func TestUpdateManagerCurrentVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -334,7 +334,7 @@ func TestUpdateManagerCurrentVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -358,7 +358,7 @@ func TestUpdateManagerPathToCurrentVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -366,7 +366,7 @@ func TestUpdateManagerPathToCurrentVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -389,7 +389,7 @@ func TestUpdateManagerPathToCurrentVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -397,7 +397,7 @@ func TestUpdateManagerPathToCurrentVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -451,7 +451,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		defer server.Close()
 		fs := afero.NewMemMapFs()
 		versionsPath := "/ui-versions"
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -459,7 +459,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -521,7 +521,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -529,7 +529,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: "/ui-versions",
@@ -562,7 +562,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -570,7 +570,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: "/ui-versions",
@@ -616,7 +616,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		defer server.Close()
 		fs := afero.NewMemMapFs()
 		versionsPath := "/ui-versions"
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -624,7 +624,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -670,7 +670,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		defer server.Close()
 		fs := afero.NewMemMapFs()
 		versionsPath := "/ui-versions"
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -678,7 +678,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -718,7 +718,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		defer server.Close()
 		fs := afero.NewMemMapFs()
 		versionsPath := "/ui-versions"
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -726,7 +726,7 @@ func TestUpdateManagerUpdateToVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 				Fs:     fs,
 			},
 			VersionPath: versionsPath,
@@ -764,7 +764,7 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -772,7 +772,7 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -792,7 +792,7 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -800,7 +800,7 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,
@@ -823,7 +823,7 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cosmos, err := NewCosmosClient(client.NewClient(server.Client()), server.URL)
+		cosmos, err := NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 		if err != nil {
 			t.Fatalf("Expected error to be nil, go %v", err)
 		}
@@ -831,7 +831,7 @@ func TestUpdateManagerResetVersion(t *testing.T) {
 		loader := UpdateManager{
 			Cosmos: cosmos,
 			Loader: Downloader{
-				client: client.NewClient(server.Client()),
+				client: our_http.NewClient(server.Client()),
 			},
 			VersionPath: "/ui-versions",
 			Fs:          fs,

@@ -8,11 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/dcos/dcos-ui-update-service/client"
+	our_http "github.com/dcos/dcos-ui-update-service/http"
 )
 
 func makeTestClient(server *httptest.Server) (*CosmosClient, error) {
-	return NewCosmosClient(client.NewClient(server.Client()), server.URL)
+	return NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 }
 
 func TestCosmosListVersions(t *testing.T) {

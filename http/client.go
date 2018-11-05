@@ -1,38 +1,39 @@
-package client
+package http
+
+import net_http "net/http"
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/dcos/dcos-go/dcos/http/transport"
 	"github.com/dcos/dcos-ui-update-service/config"
 )
 
-// HTTP is a convenience wrapper around an httpClient
-type HTTP struct {
-	client           *http.Client
+// Client is a convenience wrapper around an httpClient
+type Client struct {
+	client           *net_http.Client
 	clientAuthHeader string
 	hasIAM           bool
 }
 
-func (h *HTTP) Do(req *http.Request) (*http.Response, error) {
+func (h *Client) Do(req *net_http.Request) (*net_http.Response, error) {
 	if !h.hasIAM && h.clientAuthHeader != "" {
 		req.Header.Set("Authorization", h.clientAuthHeader)
 	}
 	return h.client.Do(req)
 }
 
-func (h *HTTP) SetClientAuth(clientAuth string) {
+func (h *Client) SetClientAuth(clientAuth string) {
 	h.clientAuthHeader = clientAuth
 }
 
-func (h *HTTP) ClearClientAuth() {
+func (h *Client) ClearClientAuth() {
 	h.clientAuthHeader = ""
 }
 
 // New returns a new http.Client that handles setting the authentication
 // header appropriately for the dcos-ui-service account if IAM is configured.
-func New(cfg *config.Config) (*HTTP, error) {
+func New(cfg *config.Config) (*Client, error) {
 	transportOptions := []transport.OptionTransportFunc{}
 	if cfg.CACertFile != "" {
 		transportOptions = append(transportOptions, transport.OptionCaCertificatePath(cfg.CACertFile))
@@ -45,19 +46,19 @@ func New(cfg *config.Config) (*HTTP, error) {
 		return nil, fmt.Errorf("Unable to initialize HTTP transport: %s", err)
 	}
 	hasIAM := cfg.IAMConfig != ""
-	client := &http.Client{
+	client := &net_http.Client{
 		Transport: tr,
 		Timeout:   cfg.HTTPClientTimeout,
 	}
-	return &HTTP{
+	return &Client{
 		client:           client,
 		clientAuthHeader: "",
 		hasIAM:           hasIAM,
 	}, nil
 }
 
-func NewClient(client *http.Client) *HTTP {
-	return &HTTP{
+func NewClient(client *net_http.Client) *Client {
+	return &Client{
 		client:           client,
 		clientAuthHeader: "",
 		hasIAM:           false,

@@ -1,18 +1,19 @@
-package client
+package http
+
+import net_http "net/http"
 
 import (
-	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func makeFakeServer(expectedAuthHeader string) *httptest.Server {
-	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	server := httptest.NewServer(net_http.HandlerFunc(func(rw net_http.ResponseWriter, req *net_http.Request) {
 		receivedAuth := req.Header.Get("Authorization")
 		if receivedAuth != expectedAuthHeader {
-			rw.WriteHeader(http.StatusBadRequest)
+			rw.WriteHeader(net_http.StatusBadRequest)
 		} else {
-			rw.WriteHeader(http.StatusOK)
+			rw.WriteHeader(net_http.StatusOK)
 		}
 	}))
 
@@ -30,7 +31,7 @@ func TestClientUsesAuth(t *testing.T) {
 		client := NewClient(server.Client())
 		client.SetClientAuth(authValue)
 
-		req, err := http.NewRequest("GET", server.URL+"/", nil)
+		req, err := net_http.NewRequest("GET", server.URL+"/", nil)
 		if err != nil {
 			t.Fatalf("Expected NewRequest err to be nil, got %v", err)
 		}
@@ -38,7 +39,7 @@ func TestClientUsesAuth(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expected Do err to be nil, got %v", err)
 		}
-		if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode != net_http.StatusOK {
 			t.Errorf("Expected Auth header didn't match, mock server returned %v", resp.StatusCode)
 		}
 	})
@@ -52,7 +53,7 @@ func TestClientUsesAuth(t *testing.T) {
 		client.SetClientAuth("testing123")
 		client.ClearClientAuth()
 
-		req, err := http.NewRequest("GET", server.URL+"/", nil)
+		req, err := net_http.NewRequest("GET", server.URL+"/", nil)
 		if err != nil {
 			t.Fatalf("Expected NewRequest err to be nil, got %v", err)
 		}
@@ -60,7 +61,7 @@ func TestClientUsesAuth(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expected Do err to be nil, got %v", err)
 		}
-		if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode != net_http.StatusOK {
 			t.Errorf("Expected Auth header didn't match, mock server returned %v", resp.StatusCode)
 		}
 	})

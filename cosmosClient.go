@@ -8,13 +8,13 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/dcos/dcos-ui-update-service/client"
+	our_http "github.com/dcos/dcos-ui-update-service/http"
 	"github.com/pkg/errors"
 )
 
 // CosmosClient abstracts common API calls against Cosmos
 type CosmosClient struct {
-	httpClient  *client.HTTP
+	httpClient  *our_http.Client
 	UniverseURL *url.URL
 }
 
@@ -141,7 +141,7 @@ func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion strin
 	return assets, nil
 }
 
-func NewCosmosClient(httpClient *client.HTTP, universeURL string) (*CosmosClient, error) {
+func NewCosmosClient(httpClient *our_http.Client, universeURL string) (*CosmosClient, error) {
 	parsedURL, err := url.Parse(universeURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing universe URL for cosmos client")

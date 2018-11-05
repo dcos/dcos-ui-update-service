@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/coreos/go-systemd/activation"
-	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/dcos/dcos-ui-update-service/config"
+	our_http "github.com/dcos/dcos-ui-update-service/http"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -21,7 +21,7 @@ type UIService struct {
 
 	UpdateManager *UpdateManager
 
-	Client *client.HTTP
+	Client *our_http.Client
 }
 
 // SetupUIHandler create UIFileHandler for service ui and set default directory to
@@ -37,7 +37,7 @@ func SetupUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
 
 func setup(args []string) (*UIService, error) {
 	cfg := config.Parse(args)
-	httpClient, err := client.New(cfg)
+	httpClient, err := our_http.New(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not build http client: %s", err.Error())
 		os.Exit(1)

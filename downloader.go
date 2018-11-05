@@ -12,14 +12,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dcos/dcos-ui-update-service/client"
+	our_http "github.com/dcos/dcos-ui-update-service/http"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 )
 
 // Downloader is used to download a package from a URL and extract it to the filesystem
 type Downloader struct {
-	client *client.HTTP
+	client *our_http.Client
 	Fs     afero.Fs
 }
 
