@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/dcos/dcos-ui-update-service/client"
 	"github.com/pkg/errors"
@@ -75,7 +76,9 @@ func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResp
 		return nil, errors.Wrap(err, "could not create json body from ListVersionRequest")
 	}
 
-	req, err := http.NewRequest("POST", c.UniverseURL.String()+"/package/list-versions", bytes.NewBuffer(body))
+	reqURL := *c.UniverseURL
+	reqURL.Path = path.Join(reqURL.Path, "/package/list-versions")
+	req, err := http.NewRequest("POST", reqURL.String(), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +110,9 @@ func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion strin
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", c.UniverseURL.String()+"/package/describe", bytes.NewBuffer(body))
+	reqURL := *c.UniverseURL
+	reqURL.Path = path.Join(reqURL.Path, "/package/describe")
+	req, err := http.NewRequest("POST", reqURL.String(), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create json body from PackageDetailRequest")
 	}
