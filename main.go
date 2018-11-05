@@ -35,8 +35,8 @@ func SetupUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
 	return NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot)
 }
 
-func setup() (*UIService, error) {
-	cfg := config.Parse()
+func setup(args []string) (*UIService, error) {
+	cfg := config.Parse(args)
 	httpClient, err := client.New(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not build http client: %s", err.Error())
@@ -58,7 +58,8 @@ func setup() (*UIService, error) {
 
 // TODO: think about client timeouts https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 func main() {
-	service, err := setup()
+	cliArgs := os.Args[1:]
+	service, err := setup(cliArgs)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initiate ui service, %s", err.Error())
 		os.Exit(1)
