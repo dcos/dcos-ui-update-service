@@ -11,13 +11,33 @@ import (
 	our_http "github.com/dcos/dcos-ui-update-service/http"
 )
 
+var (
+	sucessListResponse      = `{"results":{"2.25.0":"11","1.0.5-2.2.5":"7","1.0.15-3.0.7":"15","1.0.20-3.0.10":"20","1.0.17-3.0.8":"17","1.0.21-3.0.10":"21","2.0.1-3.0.14":"27","1.0.22-3.0.10":"22","1.0.23-3.0.10":"23","1.0.24-3.0.10":"24","1.0.13-2.2.5":"13","2.1.0-3.0.16":"100","1.0.12-2.2.5":"12","1.0.2-2.2.5":"4","1.0.18-3.0.9":"18","0.2.0-2":"1","1.0.16-3.0.8":"16","1.0.25-3.0.10":"25","2.0.2-3.0.14":"28","2.2.5-0.2.0":"3","1.0.8-2.2.5":"10","2.0.0-3.0.14":"26","2.2.0-3.0.16":"200","1.0.14-3.0.7":"14","1.0.6-2.2.5":"8","2.0.3-3.0.14":"29","2.3.0-3.0.16":"300","1.0.7-2.2.5":"9","0.2.0-1":"0","1.0.4-2.2.5":"5"}}`
+	successDescribeResponse = `{
+	"package": {
+		"resource": {
+			"assets": {
+				"uris": {
+					"dcos-ui-bundle": "https://frontend-elasticl-11uu7xp48vh9c-805473783.eu-central-1.elb.amazonaws.com/package/resource?url=https://downloads.mesosphere.io/dcos-ui/master%2Bdcos-ui-v2.24.4.tar.gz"
+				}
+			}
+		}
+	}}`
+
+	emptyDescribeResponse = `{
+	"package": {
+		"resource": {
+			"assets": {
+			}
+		}
+	}}`
+)
+
 func makeTestClient(server *httptest.Server) (*CosmosClient, error) {
 	return NewCosmosClient(our_http.NewClient(server.Client()), server.URL)
 }
 
 func serveSuccessfulListVersionResponseTestServer(t *testing.T) *httptest.Server {
-	defaultResponse := `{"results":{"2.25.0":"11","1.0.5-2.2.5":"7","1.0.15-3.0.7":"15","1.0.20-3.0.10":"20","1.0.17-3.0.8":"17","1.0.21-3.0.10":"21","2.0.1-3.0.14":"27","1.0.22-3.0.10":"22","1.0.23-3.0.10":"23","1.0.24-3.0.10":"24","1.0.13-2.2.5":"13","2.1.0-3.0.16":"100","1.0.12-2.2.5":"12","1.0.2-2.2.5":"4","1.0.18-3.0.9":"18","0.2.0-2":"1","1.0.16-3.0.8":"16","1.0.25-3.0.10":"25","2.0.2-3.0.14":"28","2.2.5-0.2.0":"3","1.0.8-2.2.5":"10","2.0.0-3.0.14":"26","2.2.0-3.0.16":"200","1.0.14-3.0.7":"14","1.0.6-2.2.5":"8","2.0.3-3.0.14":"29","2.3.0-3.0.16":"300","1.0.7-2.2.5":"9","0.2.0-1":"0","1.0.4-2.2.5":"5"}}`
-
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		accept := req.Header.Get("accept")
 		if accept != "application/vnd.dcos.package.list-versions-response+json;charset=utf-8;version=v1" {
@@ -57,7 +77,7 @@ func serveSuccessfulListVersionResponseTestServer(t *testing.T) *httptest.Server
 			t.Fatalf("Expect to request info for dcos-ui, instead got %q", request.PackageName)
 		}
 
-		io.WriteString(rw, defaultResponse)
+		io.WriteString(rw, sucessListResponse)
 	}))
 }
 
@@ -126,17 +146,6 @@ func TestCosmosListVersions(t *testing.T) {
 }
 
 func serveSuccessfulDescribeResponseServer(t *testing.T) *httptest.Server {
-	defaultResponse := `{
-		"package": {
-			"resource": {
-				"assets": {
-					"uris": {
-						"dcos-ui-bundle": "https://frontend-elasticl-11uu7xp48vh9c-805473783.eu-central-1.elb.amazonaws.com/package/resource?url=https://downloads.mesosphere.io/dcos-ui/master%2Bdcos-ui-v2.24.4.tar.gz"
-					}
-				}
-			}
-		}}`
-
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		accept := req.Header.Get("accept")
 		if accept != "application/vnd.dcos.package.describe-response+json;charset=utf-8;version=v3" {
@@ -176,7 +185,7 @@ func serveSuccessfulDescribeResponseServer(t *testing.T) *httptest.Server {
 			t.Fatalf("Expect to request details for dcos-ui, instead got %q", request.PackageName)
 		}
 
-		io.WriteString(rw, defaultResponse)
+		io.WriteString(rw, successDescribeResponse)
 	}))
 }
 
@@ -244,15 +253,8 @@ func TestCosmosDetail(t *testing.T) {
 	})
 
 	t.Run("returns error if incomplete JSON is returned", func(t *testing.T) {
-		emptyResponse := `{
-			"package": {
-				"resource": {
-					"assets": {
-					}
-				}
-			}}`
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			io.WriteString(rw, emptyResponse)
+			io.WriteString(rw, emptyDescribeResponse)
 		}))
 		// Close the server when test finishes
 		defer server.Close()
