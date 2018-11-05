@@ -159,11 +159,8 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 			w.WriteHeader(http.StatusNotAcceptable)
 			return
 		}
-		clientAuth := r.Header.Get("Authorization")
-		if clientAuth != "" {
-			service.Client.SetClientAuth(clientAuth)
-			defer service.Client.ClearClientAuth()
-		}
+		service.Client.SetRequestHeaders(r.Header)
+		defer service.Client.ClearRequestHeaders()
 
 		err := service.UpdateManager.UpdateToVersion(version, service.UIHandler)
 
