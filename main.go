@@ -104,7 +104,6 @@ func Run(service *UIService, l net.Listener) error {
 }
 
 // StartSocket if systemd did not provide a socket
-
 func StartSocket(service *UIService) error {
 	listenNet := service.Config.ListenNetProtocol
 	listenAddr := service.Config.ListenNetAddress
