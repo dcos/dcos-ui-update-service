@@ -13,13 +13,16 @@ import (
 
 // CosmosClient abstracts common API calls against Cosmos
 type CosmosClient struct {
-	client      *client.HTTP
+	httpClient  *client.HTTP
 	UniverseURL *url.URL
 }
 
+type VersionNumberString string
+type CosmosPackageNumberRevision string
+
 // ListVersionResponse is the parsed result of /package/list-versions requests
 type ListVersionResponse struct {
-	Results map[string]string `json:"results"`
+	Results map[VersionNumberString]CosmosPackageNumberRevision `json:"results"`
 }
 
 // ListVersionRequest is the request body send to /package/list-versions
@@ -33,6 +36,9 @@ type PackageDetailRequest struct {
 	PackageName    string `json:"packageName"`
 	PackageVersion string `json:"packageVersion"`
 }
+
+type PackageAssetNameString string
+type PackageAssetURIString string
 
 type PackageDetailResponse struct {
 	Package struct {
@@ -50,7 +56,7 @@ type PackageDetailResponse struct {
 		Marathon              map[string]string `json:"marathon"`
 		Resource              struct {
 			Assets struct {
-				Uris map[string]string `json:"uris"`
+				Uris map[PackageAssetNameString]PackageAssetURIString `json:"uris"`
 			} `json:"assets"`
 		} `json:"resource"`
 		Config struct {
@@ -78,7 +84,7 @@ func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResp
 	req.Header.Set("accept", "application/vnd.dcos.package.list-versions-response+json;charset=utf-8;version=v1")
 	req.Header.Set("content-type", "application/vnd.dcos.package.list-versions-request+json;charset=utf-8;version=v1")
 
-	resp, err := c.client.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +101,7 @@ func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResp
 	return &response, nil
 }
 
-func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion string) (map[string]string, error) {
+func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion string) (map[PackageAssetNameString]PackageAssetURIString, error) {
 	packageDetailReq := PackageDetailRequest{PackageName: packageName, PackageVersion: packageVersion}
 	body := new(bytes.Buffer)
 	err := json.NewEncoder(body).Encode(packageDetailReq)
@@ -110,7 +116,7 @@ func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion strin
 	req.Header.Set("accept", "application/vnd.dcos.package.describe-response+json;charset=utf-8;version=v3")
 	req.Header.Set("content-type", "application/vnd.dcos.package.describe-request+json;charset=UTF-8;version=v1")
 
-	resp, err := c.client.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -126,20 +132,20 @@ func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion strin
 	assets := response.Package.Resource.Assets.Uris
 
 	if len(assets) == 0 {
-		return nil, fmt.Errorf("Could not get asset uris from JSON: %#v", assets)
+		return nil, fmt.Errorf("Could not get asset uris from JSON")
 	}
 
 	return assets, nil
 }
 
-func NewCosmosClient(client *client.HTTP, universeURL string) (*CosmosClient, error) {
+func NewCosmosClient(httpClient *client.HTTP, universeURL string) (*CosmosClient, error) {
 	parsedURL, err := url.Parse(universeURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing universe URL for cosmos client")
 	}
 
 	return &CosmosClient{
-		client:      client,
+		httpClient:  httpClient,
 		UniverseURL: parsedURL,
 	}, nil
 }

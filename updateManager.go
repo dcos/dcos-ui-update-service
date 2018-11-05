@@ -23,7 +23,8 @@ type UpdateManager struct {
 }
 
 func (l *ListVersionResponse) includesTargetVersion(version string) bool {
-	return len(l.Results[version]) > 0
+	resultVersion := VersionNumberString(version)
+	return len(l.Results[resultVersion]) > 0
 }
 
 // NewUpdateManager creates a new instance of UpdateManager
@@ -71,12 +72,12 @@ func (um *UpdateManager) LoadVersion(version string, targetDirectory string) err
 		return errors.Wrap(getAssetsErr, "Could not reach the server")
 	}
 
-	uiBundleName := "dcos-ui-bundle"
+	uiBundleName := PackageAssetNameString("dcos-ui-bundle")
 	uiBundleURI, found := assets[uiBundleName]
 	if !found {
 		return fmt.Errorf("Could not find asset with the name %s", uiBundleName)
 	}
-	uiBundleURL, err := url.Parse(uiBundleURI)
+	uiBundleURL, err := url.Parse(string(uiBundleURI))
 	if err != nil {
 		return errors.Wrap(err, "ui bundle URI could not be parsed to a URL")
 	}

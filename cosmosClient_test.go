@@ -188,8 +188,8 @@ func TestCosmosDetail(t *testing.T) {
 			t.Fatalf("Expected no error, got %q", err.Error())
 		}
 
-		res := resp["dcos-ui-bundle"]
-		expected := "https://frontend-elasticl-11uu7xp48vh9c-805473783.eu-central-1.elb.amazonaws.com/package/resource?url=https://downloads.mesosphere.io/dcos-ui/master%2Bdcos-ui-v2.24.4.tar.gz"
+		res := resp[PackageAssetNameString("dcos-ui-bundle")]
+		expected := PackageAssetURIString("https://frontend-elasticl-11uu7xp48vh9c-805473783.eu-central-1.elb.amazonaws.com/package/resource?url=https://downloads.mesosphere.io/dcos-ui/master%2Bdcos-ui-v2.24.4.tar.gz")
 
 		if res != expected {
 			t.Fatalf("Expected %q as a result, got %q from %#v", expected, res, resp)
