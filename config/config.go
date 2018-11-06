@@ -47,7 +47,7 @@ const (
 const (
 	optAssetPrefix       = "asset-prefix"
 	optCaCert            = "ca-cert"
-	optDefaultUIPath     = "default-ui-path"
+	optDefaultDocRoot    = "default-ui-path"
 	optIAMConfig         = "iam-config"
 	optHTTPClientTimeout = "http-client-timeout"
 	optListenNet         = "listen-net"
@@ -87,7 +87,7 @@ func Parse(args []string) *Config {
 	cliArgs.StringVar(&cfg.ListenNetAddress, optListenAddress, cfg.ListenNetAddress, "The network address at which to listen for connections.")
 	cliArgs.StringVar(&cfg.StaticAssetPrefix, optAssetPrefix, cfg.StaticAssetPrefix, "The URL path at which to host static assets.")
 	cliArgs.StringVar(&cfg.UniverseURL, optUniverseURL, cfg.UniverseURL, "The URL where universe can be reached")
-	cliArgs.StringVar(&cfg.DefaultDocRoot, optDefaultUIPath, cfg.DefaultDocRoot, "The filesystem path to serve the default UI from (pre-bundled).")
+	cliArgs.StringVar(&cfg.DefaultDocRoot, optDefaultDocRoot, cfg.DefaultDocRoot, "The filesystem path to serve the default UI from (pre-bundled).")
 	cliArgs.StringVar(&cfg.VersionsRoot, optVersionsRoot, cfg.VersionsRoot, "The filesystem path where downloaded versions are stored.")
 	cliArgs.StringVar(&cfg.MasterCountFile, optMasterCountFile, cfg.MasterCountFile, "The filesystem path to the file determining the master count.")
 	cliArgs.StringVar(&cfg.CACertFile, optCaCert, cfg.CACertFile, "The filesystem path to the certificate authority file.")
