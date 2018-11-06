@@ -78,18 +78,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(l) == 1 {
-		// Run application
-		if err := Run(service, l[0]); err != nil {
-			fmt.Fprintf(os.Stderr, "Application error: %s", err.Error())
+	var listener net.Listener
+	switch numListeners := len(l); numListeners {
+	case 0:
+		fmt.Println("Did not receive any listeners from systemd, will start with configured listener instead.")
+		listener, err = net.Listen(service.Config.ListenNetProtocol, service.Config.ListenNetAddress)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot listen for %q connections at address %q: %s \n", service.Config.ListenNetProtocol, service.Config.ListenNetAddress, err.Error())
 			os.Exit(1)
 		}
-		return
+		fmt.Fprintf(os.Stderr, "Listening using net: %q and Addr: %q\n", service.Config.ListenNetProtocol, service.Config.ListenNetAddress)
+	case 1:
+		listener = l[0]
+		fmt.Fprintf(os.Stderr, "Listening on systemd socket %s\n", listener.Addr())
+	default:
+		fmt.Fprintf(os.Stderr, "found multiple systemd sockets\n")
+		os.Exit(1)
 	}
-	fmt.Println("Did not receive any listeners from systemd, will start with configured listener instead.")
-	// Start socket
-	if err := StartSocket(service); err != nil {
 
+	if err := Run(service, listener); err != nil {
 		fmt.Fprintf(os.Stderr, "Application error: %s", err.Error())
 		os.Exit(1)
 	}
@@ -101,20 +108,6 @@ func Run(service *UIService, l net.Listener) error {
 	loggedRouter := handlers.LoggingHandler(os.Stdout, r)
 	http.Handle("/", loggedRouter)
 	return http.Serve(l, loggedRouter)
-}
-
-// StartSocket if systemd did not provide a socket
-func StartSocket(service *UIService) error {
-	listenNet := service.Config.ListenNetProtocol
-	listenAddr := service.Config.ListenNetAddress
-
-	l, err := net.Listen(listenNet, listenAddr)
-	fmt.Fprintf(os.Stderr, "Starting new socket using net: %q and Addr: %q\n", listenNet, listenAddr)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Cannot listen for %q connections at address %q: %s \n", listenNet, listenAddr, err.Error())
-		os.Exit(1)
-	}
-	return Run(service, l)
 }
 
 func newRouter(service *UIService) *mux.Router {
