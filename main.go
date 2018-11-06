@@ -98,8 +98,8 @@ func main() {
 // Run serves the API based on the Config and Listener provided
 func Run(service *UIService, l net.Listener) error {
 	r := newRouter(service)
-	http.Handle("/", r)
 	loggedRouter := handlers.LoggingHandler(os.Stdout, r)
+	http.Handle("/", loggedRouter)
 	return http.Serve(l, loggedRouter)
 }
 
