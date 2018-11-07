@@ -15,6 +15,15 @@ You can use this command to start an interactive docker shell with everything yo
 
 `docker build -t dev -f Dockerfile.dev . && docker run -v $(pwd):/src -it dev /bin/bash`
 
+You can run the service inside docker by exporting `$CLUSTER_URL` and running `make start`
+
+```bash
+$ export CLUSTER_URL=<path_to_a_cluster>
+$ make start
+```
+
+This will run the service inside docker with [rerun](https://github.com/ivpusic/rerun) that watches for changes and restarts the app when files are saved. By default running in docker will start the service on port 5000 of your local machine. The rerun arguments can be found in `rerun.json`.
+
 ## Production Deployment
 
 In the future we will push this image to dockerhub automatically.

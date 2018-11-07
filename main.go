@@ -163,6 +163,7 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 		err := service.UpdateManager.UpdateToVersion(version, service.UIHandler)
 
 		if err != nil {
+			fmt.Printf("Update to version %s failed: %#v", version, err)
 			// This returns locked on every error, it would be better if we would return a boolean if the process is locked
 			w.WriteHeader(http.StatusLocked)
 			return

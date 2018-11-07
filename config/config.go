@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"os"
 	"time"
 )
 
@@ -74,8 +75,21 @@ func NewDefaultConfig() *Config {
 	}
 }
 
+func replaceEnvVariables(args []string) []string {
+	result := make([]string, len(args))
+	for i, arg := range args {
+		if arg[0] == '$' {
+			result[i] = os.Getenv(arg[1:])
+		} else {
+			result[i] = arg
+		}
+	}
+	return result
+}
+
 func Parse(args []string) *Config {
 	cfg := NewDefaultConfig()
+	args = replaceEnvVariables(args)
 
 	cliArgs := flag.NewFlagSet("cli-args", flag.ContinueOnError)
 	cliArgs.StringVar(
