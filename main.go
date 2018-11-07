@@ -84,7 +84,13 @@ func main() {
 		fmt.Println("Did not receive any listeners from systemd, will start with configured listener instead.")
 		listener, err = net.Listen(service.Config.ListenNetProtocol, service.Config.ListenNetAddress)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Cannot listen for %q connections at address %q: %s \n", service.Config.ListenNetProtocol, service.Config.ListenNetAddress, err.Error())
+			fmt.Fprintf(
+				os.Stderr,
+				"Cannot listen for %q connections at address %q: %s \n",
+				service.Config.ListenNetProtocol,
+				service.Config.ListenNetAddress,
+				err.Error(),
+			)
 			os.Exit(1)
 		}
 		fmt.Fprintf(os.Stderr, "Listening using net: %q and Addr: %q\n", service.Config.ListenNetProtocol, service.Config.ListenNetAddress)
