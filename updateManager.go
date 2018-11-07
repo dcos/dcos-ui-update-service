@@ -34,10 +34,7 @@ func NewUpdateManager(cfg *config.Config, httpClient *http.Client) (*UpdateManag
 		return nil, errors.Wrap(err, "failed to parse configured Universe URL")
 	}
 	fs := afero.NewOsFs()
-	cosmos, err := NewCosmosClient(httpClient, cfg.UniverseURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create cosmos client with universe url provided")
-	}
+	cosmos := NewCosmosClient(httpClient, universeURL)
 
 	return &UpdateManager{
 		Cosmos: cosmos,

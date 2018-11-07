@@ -141,14 +141,9 @@ func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion strin
 	return assets, nil
 }
 
-func NewCosmosClient(httpClient *our_http.Client, universeURL string) (*CosmosClient, error) {
-	parsedURL, err := url.Parse(universeURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "error parsing universe URL for cosmos client")
-	}
-
+func NewCosmosClient(httpClient *our_http.Client, universeURL *url.URL) *CosmosClient {
 	return &CosmosClient{
 		httpClient:  httpClient,
-		UniverseURL: parsedURL,
-	}, nil
+		UniverseURL: universeURL,
+	}
 }
