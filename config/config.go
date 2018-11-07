@@ -86,7 +86,7 @@ func Parse(args []string) *Config {
 	)
 	cliArgs.StringVar(&cfg.ListenNetAddress, optListenAddress, cfg.ListenNetAddress, "The network address at which to listen for connections.")
 	cliArgs.StringVar(&cfg.StaticAssetPrefix, optAssetPrefix, cfg.StaticAssetPrefix, "The URL path at which to host static assets.")
-	cliArgs.StringVar(&cfg.UniverseURL, optUniverseURL, cfg.UniverseURL, "The URL where universe can be reached")
+	cliArgs.StringVar(&cfg.UniverseURL, optUniverseURL, cfg.UniverseURL, "The URL where universe can be reached.")
 	cliArgs.StringVar(&cfg.DefaultDocRoot, optDefaultDocRoot, cfg.DefaultDocRoot, "The filesystem path to serve the default UI from (pre-bundled).")
 	cliArgs.StringVar(&cfg.VersionsRoot, optVersionsRoot, cfg.VersionsRoot, "The filesystem path where downloaded versions are stored.")
 	cliArgs.StringVar(&cfg.MasterCountFile, optMasterCountFile, cfg.MasterCountFile, "The filesystem path to the file determining the master count.")

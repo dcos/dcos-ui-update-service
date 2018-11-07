@@ -148,7 +148,7 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 
 		// Check for empty version
 		if len(version) == 0 {
-			w.WriteHeader(http.StatusNotAcceptable)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		service.Client.SetRequestHeaders(r.Header)
@@ -176,12 +176,13 @@ func ResetToDefaultUIHandler(state *UIService) func(http.ResponseWriter, *http.R
 		}
 		err := state.UIHandler.UpdateDocumentRoot(state.Config.DefaultDocRoot)
 		if err != nil {
+			fmt.Printf("Failed to reset to default document root. %#v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		err = state.UpdateManager.ResetVersion()
 		if err != nil {
-			// TODO: Log we failed to remove latest
+			fmt.Printf("Failed to removed current version when reseting to default document root. %#v", err)
 		}
 		w.WriteHeader(http.StatusOK)
 	}

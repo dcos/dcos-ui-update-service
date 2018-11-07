@@ -80,7 +80,7 @@ func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResp
 	reqURL.Path = path.Join(reqURL.Path, "/package/list-versions")
 	req, err := http.NewRequest("POST", reqURL.String(), bytes.NewBuffer(body))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "request to cosmos /package/list-versions failed")
 	}
 	req.Header.Set("accept", "application/vnd.dcos.package.list-versions-response+json;charset=utf-8;version=v1")
 	req.Header.Set("content-type", "application/vnd.dcos.package.list-versions-request+json;charset=utf-8;version=v1")
@@ -91,12 +91,12 @@ func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResp
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to query cosmos")
+		return nil, fmt.Errorf("request to cosmos /package/list-versions failed with status %v", resp.StatusCode)
 	}
 	var response ListVersionResponse
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to decode cosmos /package/list-versions response.")
 	}
 
 	return &response, nil

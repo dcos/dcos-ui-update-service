@@ -62,7 +62,7 @@ func TestDownloader(t *testing.T) {
 				t.Fatalf("Could not create a tmp dir")
 			}
 
-			downloadURL, _ := url.Parse("http://unknown")
+			downloadURL, _ := url.Parse(server.URL)
 			err = loader.downloadAndUnpack(downloadURL, dest)
 
 			if err == nil {
