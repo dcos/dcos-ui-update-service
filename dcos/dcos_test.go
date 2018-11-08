@@ -1,4 +1,4 @@
-package main
+package dcos
 
 import (
 	"strings"
@@ -12,7 +12,7 @@ func TestDCOS(t *testing.T) {
 		// TODO: move to table driven tests
 		t.Run("throws if the file is not found", func(t *testing.T) {
 			system := DCOS{
-				MasterCountLocation: "fixtures/non-existant",
+				MasterCountLocation: "../fixtures/non-existant",
 			}
 
 			result, err := system.IsMultiMaster()
@@ -27,7 +27,7 @@ func TestDCOS(t *testing.T) {
 
 		t.Run("throws if the file is empty", func(t *testing.T) {
 			system := DCOS{
-				MasterCountLocation: "fixtures/empty",
+				MasterCountLocation: "../fixtures/empty",
 			}
 
 			result, err := system.IsMultiMaster()
@@ -42,7 +42,7 @@ func TestDCOS(t *testing.T) {
 
 		t.Run("returns true if there is a number bigger than 1", func(t *testing.T) {
 			system := DCOS{
-				MasterCountLocation: "fixtures/multi-master",
+				MasterCountLocation: "../fixtures/multi-master",
 			}
 
 			result, err := system.IsMultiMaster()
@@ -57,7 +57,7 @@ func TestDCOS(t *testing.T) {
 
 		t.Run("returns false if there is only one master", func(t *testing.T) {
 			system := DCOS{
-				MasterCountLocation: "fixtures/single-master",
+				MasterCountLocation: "../fixtures/single-master",
 			}
 
 			result, err := system.IsMultiMaster()

@@ -1,4 +1,4 @@
-package main
+package downloader
 
 import (
 	"archive/tar"
@@ -17,8 +17,8 @@ import (
 	"github.com/spf13/afero"
 )
 
-// Downloader is used to download a package from a URL and extract it to the filesystem
-type Downloader struct {
+// Client is used to download a package from a URL and extract it to the filesystem
+type Client struct {
 	client *our_http.Client
 	Fs     afero.Fs
 }
@@ -26,7 +26,7 @@ type Downloader struct {
 // ExtractTarGzToDir extracts payload as a tar file, unzips each entry.
 // It assumes that the tar file represents a directory and writes any
 // file/directory within into dest.
-func (d Downloader) ExtractTarGzToDir(dest string, payload []byte) error {
+func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 	gzr, err := gzip.NewReader(bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("Error unzipping the payload")
@@ -82,7 +82,7 @@ func (d Downloader) ExtractTarGzToDir(dest string, payload []byte) error {
 	}
 }
 
-func (d *Downloader) downloadAndUnpack(fileURL *url.URL, targetDirectory string) error {
+func (d *Client) DownloadAndUnpack(fileURL *url.URL, targetDirectory string) error {
 	req, err := http.NewRequest("GET", fileURL.String(), nil)
 	if err != nil {
 		return err
@@ -100,10 +100,17 @@ func (d *Downloader) downloadAndUnpack(fileURL *url.URL, targetDirectory string)
 	if err != nil {
 		return fmt.Errorf("could not read response body: %s", err)
 	}
-	err = d.ExtractTarGzToDir(targetDirectory, body)
+	err = d.extractTarGzToDir(targetDirectory, body)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func New(httpClient *our_http.Client, fs afero.Fs) *Client {
+	return &Client{
+		client: httpClient,
+		Fs:     fs,
+	}
 }

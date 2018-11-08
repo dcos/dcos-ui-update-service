@@ -1,4 +1,4 @@
-package main
+package updateManager
 
 import (
 	"fmt"
@@ -7,41 +7,35 @@ import (
 	"path"
 
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/dcos/dcos-ui-update-service/cosmos"
+	"github.com/dcos/dcos-ui-update-service/downloader"
+	"github.com/dcos/dcos-ui-update-service/fileHandler"
 	"github.com/dcos/dcos-ui-update-service/http"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 )
 
-// UpdateManager handles access to common setup question
-type UpdateManager struct {
-	Cosmos      *CosmosClient
-	Loader      Downloader
+// Client handles access to common setup question
+type Client struct {
+	Cosmos      *cosmos.Client
+	Loader      *downloader.Client
 	UniverseURL *url.URL
 	VersionPath string
 	Fs          afero.Fs
 	client      *http.Client
 }
 
-func (l *ListVersionResponse) includesTargetVersion(version string) bool {
-	resultVersion := VersionNumberString(version)
-	return len(l.Results[resultVersion]) > 0
-}
-
-// NewUpdateManager creates a new instance of UpdateManager
-func NewUpdateManager(cfg *config.Config, httpClient *http.Client) (*UpdateManager, error) {
+// NewClient creates a new instance of Client
+func NewClient(cfg *config.Config, httpClient *http.Client) (*Client, error) {
 	universeURL, err := url.Parse(cfg.UniverseURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse configured Universe URL")
 	}
 	fs := afero.NewOsFs()
-	cosmos := NewCosmosClient(httpClient, universeURL)
 
-	return &UpdateManager{
-		Cosmos: cosmos,
-		Loader: Downloader{
-			client: httpClient,
-			Fs:     fs,
-		},
+	return &Client{
+		Cosmos:      cosmos.NewClient(httpClient, universeURL),
+		Loader:      downloader.New(httpClient, fs),
 		UniverseURL: universeURL,
 		VersionPath: cfg.VersionsRoot,
 		Fs:          fs,
@@ -50,13 +44,13 @@ func NewUpdateManager(cfg *config.Config, httpClient *http.Client) (*UpdateManag
 }
 
 // LoadVersion downloads the given DC/OS UI version to the target directory.
-func (um *UpdateManager) LoadVersion(version string, targetDirectory string) error {
+func (um *Client) LoadVersion(version string, targetDirectory string) error {
 	listVersionResp, listErr := um.Cosmos.ListPackageVersions("dcos-ui")
 	if listErr != nil {
 		return fmt.Errorf("Could not reach the server: %#v", listErr)
 	}
 
-	if !listVersionResp.includesTargetVersion(version) {
+	if !listVersionResp.IncludesTargetVersion(version) {
 		return fmt.Errorf("The requested version is not available")
 	}
 
@@ -69,7 +63,7 @@ func (um *UpdateManager) LoadVersion(version string, targetDirectory string) err
 		return errors.Wrap(getAssetsErr, "Could not reach the server")
 	}
 
-	uiBundleName := PackageAssetNameString("dcos-ui-bundle")
+	uiBundleName := cosmos.PackageAssetNameString("dcos-ui-bundle")
 	uiBundleURI, found := assets[uiBundleName]
 	if !found {
 		return fmt.Errorf("Could not find asset with the name %s", uiBundleName)
@@ -79,7 +73,7 @@ func (um *UpdateManager) LoadVersion(version string, targetDirectory string) err
 		return errors.Wrap(err, "ui bundle URI could not be parsed to a URL")
 	}
 
-	if umErr := um.Loader.downloadAndUnpack(uiBundleURL, targetDirectory); umErr != nil {
+	if umErr := um.Loader.DownloadAndUnpack(uiBundleURL, targetDirectory); umErr != nil {
 		return errors.Wrap(umErr, fmt.Sprintf("Could not load %q", uiBundleURI))
 	}
 
@@ -87,7 +81,7 @@ func (um *UpdateManager) LoadVersion(version string, targetDirectory string) err
 }
 
 // CurrentVersion retrieves the current version of the package
-func (um *UpdateManager) CurrentVersion() (string, error) {
+func (um *Client) CurrentVersion() (string, error) {
 	exists, err := afero.DirExists(um.Fs, um.VersionPath)
 
 	if !exists || err != nil {
@@ -122,7 +116,7 @@ func (um *UpdateManager) CurrentVersion() (string, error) {
 
 // PathToCurrentVersion return the filesystem path to the current UI version
 // or returns an error is the current version cannot be determined
-func (um *UpdateManager) PathToCurrentVersion() (string, error) {
+func (um *Client) PathToCurrentVersion() (string, error) {
 	currentVersion, err := um.CurrentVersion()
 	if err != nil {
 		return "", err
@@ -136,7 +130,7 @@ func (um *UpdateManager) PathToCurrentVersion() (string, error) {
 }
 
 // UpdateToVersion updates the ui to the given version
-func (um *UpdateManager) UpdateToVersion(version string, fileServer UIFileServer) error {
+func (um *Client) UpdateToVersion(version string, fileServer fileHandler.UIFileServer) error {
 	// Find out which version we currently have
 	currentVersion, err := um.CurrentVersion()
 
@@ -181,7 +175,7 @@ func (um *UpdateManager) UpdateToVersion(version string, fileServer UIFileServer
 	return nil
 }
 
-func (um *UpdateManager) ResetVersion() error {
+func (um *Client) ResetVersion() error {
 	currentVersion, err := um.CurrentVersion()
 
 	if err != nil {

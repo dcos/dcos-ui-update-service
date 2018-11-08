@@ -9,7 +9,9 @@ import (
 	"testing"
 
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/dcos/dcos-ui-update-service/dcos"
 	our_http "github.com/dcos/dcos-ui-update-service/http"
+	"github.com/dcos/dcos-ui-update-service/updateManager"
 	"github.com/spf13/afero"
 )
 
@@ -24,7 +26,7 @@ func setupUIService() *UIService {
 	cfg.VersionsRoot = "/ui-versions"
 	cfg.MasterCountFile = "./fixtures/single-master"
 
-	um, _ := NewUpdateManager(cfg, &our_http.Client{})
+	um, _ := updateManager.NewClient(cfg, &our_http.Client{})
 	um.Fs = afero.NewMemMapFs()
 	um.Fs.MkdirAll("/ui-versions", 0755)
 
@@ -34,7 +36,7 @@ func setupUIService() *UIService {
 		Config:        cfg,
 		UpdateManager: um,
 		UIHandler:     uiHandler,
-		MasterCounter: DCOS{
+		MasterCounter: dcos.DCOS{
 			MasterCountLocation: cfg.MasterCountFile,
 		},
 	}
@@ -151,7 +153,7 @@ func TestSetupUIHandler(t *testing.T) {
 		cfg.VersionsRoot = "/ui-versions"
 		cfg.MasterCountFile = "./fixtures/single-master"
 
-		um, _ := NewUpdateManager(cfg, &our_http.Client{})
+		um, _ := updateManager.NewClient(cfg, &our_http.Client{})
 		um.Fs = afero.NewMemMapFs()
 		um.Fs.MkdirAll("/ui-versions", 0755)
 
@@ -170,7 +172,7 @@ func TestSetupUIHandler(t *testing.T) {
 		cfg.VersionsRoot = "/ui-versions"
 		cfg.MasterCountFile = "./fixtures/single-master"
 
-		um, _ := NewUpdateManager(cfg, &our_http.Client{})
+		um, _ := updateManager.NewClient(cfg, &our_http.Client{})
 		um.Fs = afero.NewMemMapFs()
 		um.Fs.MkdirAll("/ui-versions/2.25.3", 0755)
 
