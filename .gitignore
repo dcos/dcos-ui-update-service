@@ -2,3 +2,5 @@ main
 coverage.txt
 coverage.xml
 build/
+versions/
+dcos-ui-update-service

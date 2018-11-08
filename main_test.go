@@ -7,11 +7,37 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+
+	"github.com/dcos/dcos-ui-update-service/config"
+	our_http "github.com/dcos/dcos-ui-update-service/http"
+	"github.com/spf13/afero"
 )
 
 func listen() (net.Listener, error) {
 	// Allocate a new port in the ephemeral range and listen on it.
 	return net.Listen("tcp", "127.0.0.1:0")
+}
+
+func setupUIService() *UIService {
+	cfg := config.NewDefaultConfig()
+	cfg.DefaultDocRoot = "./public"
+	cfg.VersionsRoot = "/ui-versions"
+	cfg.MasterCountFile = "./fixtures/single-master"
+
+	um, _ := NewUpdateManager(cfg, &our_http.Client{})
+	um.Fs = afero.NewMemMapFs()
+	um.Fs.MkdirAll("/ui-versions", 0755)
+
+	uiHandler := SetupUIHandler(cfg, um)
+
+	return &UIService{
+		Config:        cfg,
+		UpdateManager: um,
+		UIHandler:     uiHandler,
+		MasterCounter: DCOS{
+			MasterCountLocation: cfg.MasterCountFile,
+		},
+	}
 }
 
 func TestApplication(t *testing.T) {
@@ -30,10 +56,10 @@ func TestApplication(t *testing.T) {
 	// to stop running and return an error from Run().
 	defer l.Close()
 	// Start a test server.
-	cfg := NewDefaultConfig()
-	cfg.DocumentRoot = "./testdata/docroot/public"
+	service := setupUIService()
+	service.UIHandler.UpdateDocumentRoot("./testdata/docroot/public")
 	go func() {
-		appDoneCh <- Run(cfg, l)
+		appDoneCh <- Run(service, l)
 	}()
 	// Yay! we're finally ready to perform requests against our server.
 	addr := "http://" + l.Addr().String()
@@ -50,7 +76,8 @@ func TestApplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exp, err := ioutil.ReadFile(filepath.Join(cfg.DocumentRoot, "test.html"))
+	documentRoot := service.UIHandler.DocumentRoot()
+	exp, err := ioutil.ReadFile(filepath.Join(documentRoot, "test.html"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,9 +93,10 @@ func TestRouter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		service := setupUIService()
 
 		rr := httptest.NewRecorder()
-		newRouter(defaultAssetPrefix, defaultDocumentRoot).ServeHTTP(rr, req)
+		newRouter(service).ServeHTTP(rr, req)
 
 		if status := rr.Code; status != http.StatusOK {
 			t.Errorf("handler returned wrong status code: got %v want %v",
@@ -92,6 +120,7 @@ func TestRouter(t *testing.T) {
 			{"returns with 200 on static", "/static/", http.StatusOK},
 			{"returns with 501 on api/v1", "/api/v1/", http.StatusNotImplemented},
 			{"returns with 404 on api", "/api", http.StatusNotFound},
+			{"returns with 405 on GET api/v1/reset", "/api/v1/reset/", http.StatusMethodNotAllowed},
 		}
 
 		for _, tt := range testCases {
@@ -100,9 +129,10 @@ func TestRouter(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				service := setupUIService()
 
 				rr := httptest.NewRecorder()
-				newRouter(defaultAssetPrefix, defaultDocumentRoot).ServeHTTP(rr, req)
+				newRouter(service).ServeHTTP(rr, req)
 
 				if rr.Code != tt.statusCode {
 					t.Errorf("handler for %v returned unexpected statuscode: got %v want %v",
@@ -110,6 +140,49 @@ func TestRouter(t *testing.T) {
 				}
 
 			})
+		}
+	})
+}
+
+func TestSetupUIHandler(t *testing.T) {
+	t.Run("sets DefaultDocRoot as document root if no current version", func(t *testing.T) {
+		cfg := config.NewDefaultConfig()
+		cfg.DefaultDocRoot = "./public"
+		cfg.VersionsRoot = "/ui-versions"
+		cfg.MasterCountFile = "./fixtures/single-master"
+
+		um, _ := NewUpdateManager(cfg, &our_http.Client{})
+		um.Fs = afero.NewMemMapFs()
+		um.Fs.MkdirAll("/ui-versions", 0755)
+
+		uiHandler := SetupUIHandler(cfg, um)
+
+		docRoot := uiHandler.DocumentRoot()
+		expected := cfg.DefaultDocRoot
+		if docRoot != expected {
+			t.Errorf("ui handler documentroot set to %v, expected %v", docRoot, expected)
+		}
+	})
+
+	t.Run("sets version as document root if there is a current version", func(t *testing.T) {
+		cfg := config.NewDefaultConfig()
+		cfg.DefaultDocRoot = "./public"
+		cfg.VersionsRoot = "/ui-versions"
+		cfg.MasterCountFile = "./fixtures/single-master"
+
+		um, _ := NewUpdateManager(cfg, &our_http.Client{})
+		um.Fs = afero.NewMemMapFs()
+		um.Fs.MkdirAll("/ui-versions/2.25.3", 0755)
+
+		uiHandler := SetupUIHandler(cfg, um)
+
+		docRoot := uiHandler.DocumentRoot()
+		expected, err := um.PathToCurrentVersion()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if docRoot != expected {
+			t.Errorf("ui handler documentroot set to %v, expected %v", docRoot, expected)
 		}
 	})
 }

@@ -4,19 +4,19 @@ DOCKER_DIR=/src
 
 .PHONY: start 
 start: docker-image
-	$(call inDocker,rerun -v)
+	$(call inDocker,rerun -v --config=rerun.json)
 
 .PHONY: watchTest 
 watchTest: docker-image 
 	$(call inDocker,rerun -v --test)
 
 .PHONY: test
-test: vet
+test: lint
 	$(call inDocker,go test -race -cover ./...)
 
 .PHONY: lint
 lint: docker-image
-	$(call inDocker,gometalinter --config=.gometalinter.json ./...)
+	$(call inDocker,go build ./ && gometalinter --config=.gometalinter.json ./...)
 
 .PHONY: docker-image
 docker-image:
@@ -39,7 +39,8 @@ ifdef NO_DOCKER
   endef
 else
   define inDocker
-    docker run \
+    docker run -p 5000:5000/tcp \
+      -e CLUSTER_URL=$(CLUSTER_URL) \
       -v $(CURRENT_DIR):$(DOCKER_DIR) \
       -it \
       --name dcos-ui-service \
