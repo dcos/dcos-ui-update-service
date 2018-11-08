@@ -120,9 +120,9 @@ func newRouter(service *UIService) *mux.Router {
 	assetPrefix := service.UIHandler.AssetPrefix()
 
 	r := mux.NewRouter()
-	r.HandleFunc("/api/v1/", NotImplementedHandler)
-	r.HandleFunc("/api/v1/update/{version}/", UpdateHandler(service))
-	r.HandleFunc("/api/v1/reset/", ResetToDefaultUIHandler(service)).Methods("DELETE")
+	r.HandleFunc("/api/v1", NotImplementedHandler)
+	r.HandleFunc("/api/v1/update/{version}", UpdateHandler(service))
+	r.HandleFunc("/api/v1/reset", ResetToDefaultUIHandler(service)).Methods("DELETE")
 	r.PathPrefix(assetPrefix).Handler(service.UIHandler)
 
 	return r
