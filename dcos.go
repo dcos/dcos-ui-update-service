@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strconv"
+	"strings"
 )
 
 // DCOS handles access to common setup question
@@ -24,6 +25,7 @@ func (d DCOS) IsMultiMaster() (bool, error) {
 	}
 
 	content := string(file)
+	content = strings.TrimSuffix(content, "\n")
 	number, err := strconv.ParseInt(content, 10, 0)
 
 	if err != nil {
