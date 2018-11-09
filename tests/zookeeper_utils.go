@@ -53,7 +53,7 @@ func (z *ZkControl) TeardownPanic() {
 
 // StartZookeeper starts a new zookeeper container
 func StartZookeeper() (*ZkControl, error) {
-	dcli, err := DockerClient()
+	dcli, err := client.NewEnvClient()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get docker client")
 	}
