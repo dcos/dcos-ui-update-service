@@ -1,4 +1,4 @@
-package main
+package cosmos
 
 import (
 	"bytes"
@@ -12,18 +12,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-// CosmosClient abstracts common API calls against Cosmos
-type CosmosClient struct {
+// Client abstracts common API calls against Cosmos
+type Client struct {
 	httpClient  *our_http.Client
 	UniverseURL *url.URL
 }
 
 type VersionNumberString string
-type CosmosPackageNumberRevision string
+type PackageNumberRevision string
 
 // ListVersionResponse is the parsed result of /package/list-versions requests
 type ListVersionResponse struct {
-	Results map[VersionNumberString]CosmosPackageNumberRevision `json:"results"`
+	Results map[VersionNumberString]PackageNumberRevision `json:"results"`
+}
+
+func (l *ListVersionResponse) IncludesTargetVersion(version string) bool {
+	resultVersion := VersionNumberString(version)
+	return len(l.Results[resultVersion]) > 0
 }
 
 // ListVersionRequest is the request body send to /package/list-versions
@@ -68,7 +73,7 @@ type PackageDetailResponse struct {
 }
 
 // ListPackageVersions retrieves a list of package versions from Cosmos matching the packageName provided
-func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResponse, error) {
+func (c *Client) ListPackageVersions(packageName string) (*ListVersionResponse, error) {
 	listVersionReq := ListVersionRequest{IncludePackageVersions: true, PackageName: "dcos-ui"}
 	body, err := json.Marshal(listVersionReq)
 
@@ -103,7 +108,7 @@ func (c *CosmosClient) ListPackageVersions(packageName string) (*ListVersionResp
 }
 
 // GetPackageAssets retrieves the package assets from Cosmos matching the packageName and packageVersion provided
-func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion string) (map[PackageAssetNameString]PackageAssetURIString, error) {
+func (c *Client) GetPackageAssets(packageName string, packageVersion string) (map[PackageAssetNameString]PackageAssetURIString, error) {
 	packageDetailReq := PackageDetailRequest{PackageName: packageName, PackageVersion: packageVersion}
 	body, err := json.Marshal(packageDetailReq)
 	if err != nil {
@@ -141,8 +146,8 @@ func (c *CosmosClient) GetPackageAssets(packageName string, packageVersion strin
 	return assets, nil
 }
 
-func NewCosmosClient(httpClient *our_http.Client, universeURL *url.URL) *CosmosClient {
-	return &CosmosClient{
+func NewClient(httpClient *our_http.Client, universeURL *url.URL) *Client {
+	return &Client{
 		httpClient:  httpClient,
 		UniverseURL: universeURL,
 	}

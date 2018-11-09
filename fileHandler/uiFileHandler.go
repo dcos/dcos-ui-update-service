@@ -1,4 +1,4 @@
-package main
+package fileHandler
 
 import (
 	"net/http"

@@ -1,4 +1,4 @@
-package main
+package cosmos
 
 import (
 	"encoding/json"
@@ -34,9 +34,9 @@ var (
 	}}`
 )
 
-func makeTestClient(server *httptest.Server) *CosmosClient {
+func makeTestClient(server *httptest.Server) *Client {
 	cosmosURL, _ := url.Parse(server.URL)
-	return NewCosmosClient(our_http.NewClient(server.Client()), cosmosURL)
+	return NewClient(our_http.NewClient(server.Client()), cosmosURL)
 }
 
 func serveSuccessfulListVersionResponseTestServer(t *testing.T) *httptest.Server {
