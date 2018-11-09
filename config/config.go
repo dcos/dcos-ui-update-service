@@ -28,6 +28,13 @@ type Config struct {
 	MasterCountFile string
 
 	LogLevel string
+	// Zookeeper configuration options
+	ZKAddress           string
+	ZKBasePath          string
+	ZKAuthInfo          string
+	ZKZnodeOwner        string
+	ZKSessionTimeout    time.Duration
+	ZKConnectionTimeout time.Duration
 }
 
 // Default values for config files
@@ -38,9 +45,15 @@ const (
 	defaultAssetPrefix       = "/static/"
 	defaultUniverseURL       = "http://127.0.0.1:7070"
 	defaultDefaultDocRoot    = "/opt/mesosphere/active/dcos-ui/usr"
-	defaultVersionsRoot      = "./versions"
+	defaultVersionsRoot      = "/opt/mesosphere/active/dcos-ui-service/versions"
 	defaultMasterCountFile   = "/opt/mesosphere/etc/master_count"
 	defaultLogLevel          = "info"
+	defaultZKAddress         = "127.0.0.1:2181"
+	defaultZKBasePath        = "/dcos/ui-update"
+	defaultZKAuthInfo        = ""
+	defaultZKZnodeOwner      = ""
+	defaultZKSessionTimeout  = 5 * time.Second
+	defaultZKConnectTimeout  = 5 * time.Second
 )
 
 const (
@@ -53,6 +66,12 @@ const (
 	optLogLevel          = "log-level"
 	optUniverseURL       = "universe-url"
 	optVersionsRoot      = "versions-root"
+	optZKAddress         = "zk-addr"
+	optZKBasePath        = "zk-base-path"
+	optZKAuthInfo        = "zk-auth-info"
+	optZKZnodeOwner      = "zk-znode-owner"
+	optZKSessionTimeout  = "zk-session-timeout"
+	optZKConnectTimeout  = "zk-connect-timeout"
 )
 
 func NewDefaultConfig() *Config {
@@ -68,6 +87,12 @@ func NewDefaultConfig() *Config {
 		defaultVersionsRoot,
 		defaultMasterCountFile,
 		defaultLogLevel,
+		defaultZKAddress,
+		defaultZKBasePath,
+		defaultZKAuthInfo,
+		defaultZKZnodeOwner,
+		defaultZKSessionTimeout,
+		defaultZKConnectTimeout,
 	}
 }
 
@@ -102,6 +127,13 @@ func Parse(args []string) *Config {
 	cliArgs.StringVar(&cfg.MasterCountFile, optMasterCountFile, cfg.MasterCountFile, "The filesystem path to the file determining the master count.")
 	cliArgs.StringVar(&cfg.LogLevel, optLogLevel, cfg.LogLevel, "The output logging level.")
 	cliArgs.DurationVar(&cfg.HTTPClientTimeout, optHTTPClientTimeout, cfg.HTTPClientTimeout, "The default http client timeout for requests.")
+	cliArgs.StringVar(&cfg.ZKAddress, optZKAddress, cfg.ZKAddress, "The Zookeeper address this client will connect to.")
+	cliArgs.StringVar(&cfg.ZKBasePath, optZKBasePath, cfg.ZKBasePath, "The path of the root zookeeper znode.")
+	cliArgs.StringVar(&cfg.ZKAuthInfo, optZKAuthInfo, cfg.ZKAuthInfo, "Authentication details for zookeeper.")
+	cliArgs.StringVar(&cfg.ZKZnodeOwner, optZKZnodeOwner, cfg.ZKZnodeOwner, "The ZK owner of the base path.")
+	cliArgs.DurationVar(&cfg.ZKSessionTimeout, optZKSessionTimeout, cfg.ZKSessionTimeout, "ZK session timeout.")
+	cliArgs.DurationVar(&cfg.ZKConnectionTimeout, optZKConnectTimeout, cfg.ZKConnectionTimeout, "Timeout to establish initial zookeeper connection.")
+
 	cliArgs.Parse(args)
 
 	return cfg
