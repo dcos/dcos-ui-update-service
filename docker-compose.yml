@@ -19,3 +19,11 @@ services:
       - CLUSTER_URL
       - AUTH_TOKEN
     command: ["npm", "start"]
+    environment:
+      - CLUSTER_URL
+    command: ["rerun", "-v", "--config=rerun.json"]
+  zookeeper:
+    image: jplock/zookeeper:3.4.13
+    ports:
+      - "2181:2181"
+

@@ -66,6 +66,7 @@ var (
 )
 
 // exported functions
+
 // Connect creates and initializes a zookeeper client
 func Connect(cfg *config.Config) (*Client, error) {
 	return connect(zkConfig{
@@ -161,8 +162,8 @@ func connect(config zkConfig) (*Client, error) {
 	}
 	err = func() error {
 		if authInfo != nil {
-			if err := client.conn.AddAuth(authInfo.schema, []byte(authInfo.owner)); err != nil {
-				return errors.Wrapf(err, "could not authenticate to ZK using '%s'", config.AuthInfo)
+			if addAuthErr := client.conn.AddAuth(authInfo.schema, []byte(authInfo.owner)); addAuthErr != nil {
+				return errors.Wrapf(addAuthErr, "could not authenticate to ZK using '%s'", config.AuthInfo)
 			}
 		}
 		// wait for the session to be established
@@ -173,8 +174,8 @@ func connect(config zkConfig) (*Client, error) {
 			return errCouldNotEstablishConnection
 		}
 
-		if err := client.initialize(); err != nil {
-			return errors.Wrap(err, "could not initialize ZK client")
+		if initErr := client.initialize(); initErr != nil {
+			return errors.Wrap(initErr, "could not initialize ZK client")
 		}
 		return nil
 	}()

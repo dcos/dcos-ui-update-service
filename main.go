@@ -9,6 +9,7 @@ import (
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/fileHandler"
+	"github.com/dcos/dcos-ui-update-service/uiService"
 	"github.com/dcos/dcos-ui-update-service/updateManager"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -24,6 +25,8 @@ type UIService struct {
 	UpdateManager *updateManager.Client
 
 	MasterCounter dcos.MasterCounter
+
+	versionStore uiService.VersionStore
 }
 
 // SetupUIHandler create UIFileHandler for service ui and set default directory to
@@ -68,6 +71,7 @@ func setup(args []string) (*UIService, error) {
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
 		MasterCounter: dcos,
+		//		versionStore: uiService.NewZKVersionStore(cfg),
 	}, nil
 }
 

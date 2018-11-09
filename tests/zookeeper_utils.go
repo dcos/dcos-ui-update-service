@@ -1,3 +1,4 @@
+// nolint
 package tests
 
 import (
@@ -52,36 +53,35 @@ func (z *ZkControl) TeardownPanic() {
 
 // StartZookeeper starts a new zookeeper container
 func StartZookeeper() (*ZkControl, error) {
-	dcli, err := DockerClient()
+	dcli, err := client.NewEnvClient()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get docker client")
 	}
 	image := "docker.io/jplock/zookeeper:3.4.13"
-	if err := pullDockerImage(dcli, image); err != nil {
+	if err = pullDockerImage(dcli, image); err != nil {
 		return nil, err
 	}
 	zkContainerName := "ui-update-test-zk"
-	r, err := dcli.ContainerCreate(
-		context.Background(),
-		&container.Config{
-			Image:      image,
-			Entrypoint: []string{"/opt/zookeeper/bin/zkServer.sh"},
-			Cmd:        []string{"start-foreground"},
-			ExposedPorts: nat.PortSet{
-				"2181/tcp": struct{}{},
-			},
+	containerConfig := &container.Config{
+		Image:      image,
+		Entrypoint: []string{"/opt/zookeeper/bin/zkServer.sh"},
+		Cmd:        []string{"start-foreground"},
+		ExposedPorts: nat.PortSet{
+			"2181/tcp": struct{}{},
 		},
-		&container.HostConfig{
-			PortBindings: nat.PortMap{
-				"2181/tcp": []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: "2181",
-					},
+	}
+	hostConfig := &container.HostConfig{
+		PortBindings: nat.PortMap{
+			"2181/tcp": []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: "2181",
 				},
 			},
 		},
-		nil, zkContainerName)
+	}
+
+	r, err := dcli.ContainerCreate(context.Background(), containerConfig, hostConfig, nil, zkContainerName)
 	if err != nil {
 		fmt.Printf("error creating zk container, %v\n", err)
 		return nil, errors.Wrap(err, "could not create zk container")
