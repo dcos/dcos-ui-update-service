@@ -1,4 +1,4 @@
-package main
+package downloader
 
 import (
 	"io/ioutil"
@@ -15,23 +15,20 @@ func TestDownloader(t *testing.T) {
 	t.Run("DownloadAndUnpack", func(t *testing.T) {
 		t.Run("should download and unpack a single file", func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-				http.ServeFile(rw, req, "fixtures/release.tar.gz")
+				http.ServeFile(rw, req, "../fixtures/release.tar.gz")
 			}))
 			// Close the server when test finishes
 			defer server.Close()
 			appFS := afero.NewMemMapFs()
 
-			loader := Downloader{
-				client: our_http.NewClient(server.Client()),
-				Fs:     appFS,
-			}
+			loader := New(our_http.NewClient(server.Client()), appFS)
 
 			dest, err := ioutil.TempDir("", "downloader_test")
 			if err != nil {
 				t.Fatalf("Could not create a tmp dir")
 			}
 			serverURL, _ := url.Parse(server.URL)
-			err = loader.downloadAndUnpack(serverURL, dest)
+			err = loader.DownloadAndUnpack(serverURL, dest)
 
 			if err != nil {
 				t.Fatalf("Should not have thrown an error, got %#v", err)
@@ -52,10 +49,7 @@ func TestDownloader(t *testing.T) {
 			defer server.Close()
 			appFS := afero.NewMemMapFs()
 
-			loader := Downloader{
-				client: our_http.NewClient(server.Client()),
-				Fs:     appFS,
-			}
+			loader := New(our_http.NewClient(server.Client()), appFS)
 
 			dest, err := ioutil.TempDir("", "downloader_test")
 			if err != nil {
@@ -63,7 +57,7 @@ func TestDownloader(t *testing.T) {
 			}
 
 			downloadURL, _ := url.Parse(server.URL)
-			err = loader.downloadAndUnpack(downloadURL, dest)
+			err = loader.DownloadAndUnpack(downloadURL, dest)
 
 			if err == nil {
 				t.Fatalf("Should have thrown an error, got none")
@@ -71,17 +65,9 @@ func TestDownloader(t *testing.T) {
 		})
 
 		t.Run("should throw if server errors", func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-				http.ServeFile(rw, req, "fixtures/release.tar.gz")
-			}))
-			// Close the server when test finishes
-			defer server.Close()
 			appFS := afero.NewMemMapFs()
 
-			loader := Downloader{
-				client: our_http.NewClient(server.Client()),
-				Fs:     appFS,
-			}
+			loader := New(our_http.NewClient(&http.Client{}), appFS)
 
 			dest, err := ioutil.TempDir("", "downloader_test")
 			if err != nil {
@@ -89,7 +75,7 @@ func TestDownloader(t *testing.T) {
 			}
 
 			downloadURL, _ := url.Parse("http://unknown")
-			err = loader.downloadAndUnpack(downloadURL, dest)
+			err = loader.DownloadAndUnpack(downloadURL, dest)
 
 			if err == nil {
 				t.Fatalf("Should have thrown an error, got none")

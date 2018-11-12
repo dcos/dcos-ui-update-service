@@ -8,7 +8,10 @@ import (
 
 	"github.com/coreos/go-systemd/activation"
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/dcos/dcos-ui-update-service/dcos"
+	"github.com/dcos/dcos-ui-update-service/fileHandler"
 	our_http "github.com/dcos/dcos-ui-update-service/http"
+	"github.com/dcos/dcos-ui-update-service/updateManager"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -17,24 +20,24 @@ import (
 type UIService struct {
 	Config *config.Config
 
-	UIHandler *UIFileHandler
+	UIHandler *fileHandler.UIFileHandler
 
-	UpdateManager *UpdateManager
+	UpdateManager *updateManager.Client
 
-	MasterCounter MasterCounter
+	MasterCounter dcos.MasterCounter
 
 	Client *our_http.Client
 }
 
 // SetupUIHandler create UIFileHandler for service ui and set default directory to
 // the current downloaded version or the default document root
-func SetupUIHandler(cfg *config.Config, um *UpdateManager) *UIFileHandler {
+func SetupUIHandler(cfg *config.Config, um *updateManager.Client) *fileHandler.UIFileHandler {
 	documentRoot := cfg.DefaultDocRoot
 	currentVersionPath, err := um.PathToCurrentVersion()
 	if err == nil {
 		documentRoot = currentVersionPath
 	}
-	return NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot)
+	return fileHandler.NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot)
 }
 
 func setup(args []string) (*UIService, error) {
@@ -44,12 +47,12 @@ func setup(args []string) (*UIService, error) {
 		fmt.Fprintf(os.Stderr, "Could not build http client: %s", err.Error())
 		os.Exit(1)
 	}
-	updateManager, err := NewUpdateManager(cfg, httpClient)
+	updateManager, err := updateManager.NewClient(cfg, httpClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create update manager")
 	}
 	uiHandler := SetupUIHandler(cfg, updateManager)
-	dcos := DCOS{
+	dcos := dcos.DCOS{
 		MasterCountLocation: cfg.MasterCountFile,
 	}
 
