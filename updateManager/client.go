@@ -125,7 +125,7 @@ func (um *Client) PathToCurrentVersion() (string, error) {
 		return "", fmt.Errorf("there is no current version available")
 	}
 
-	versionPath := path.Join(um.VersionPath, currentVersion)
+	versionPath := path.Join(um.VersionPath, currentVersion, "dist")
 	return versionPath, nil
 }
 

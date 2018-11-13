@@ -355,8 +355,8 @@ func TestClientPathToCurrentVersion(t *testing.T) {
 			t.Fatalf("Expected no error, got %#v", err)
 		}
 
-		if result != "/ui-versions/2.25.3" {
-			t.Fatalf("Expected result to be %q, got %q", "/ui-versions/2.25.3", result)
+		if result != "/ui-versions/2.25.3/dist" {
+			t.Fatalf("Expected result to be %q, got %q", "/ui-versions/2.25.3/dist", result)
 		}
 	})
 
@@ -450,7 +450,7 @@ func TestClientUpdateToVersion(t *testing.T) {
 		newVersionExists, err := afero.DirExists(fs, newVersionPath)
 
 		if !newVersionExists || err != nil {
-			t.Fatalf("Expected new directoy to exist, got %t, %#v", newVersionExists, err)
+			t.Fatalf("Expected new directory to exist, got %t, %#v", newVersionExists, err)
 		}
 
 		files, err := afero.ReadDir(fs, versionsPath)
