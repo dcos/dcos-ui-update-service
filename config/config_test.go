@@ -103,4 +103,16 @@ func TestConfig(t *testing.T) {
 
 		tests.H(t).Int64Eql(cfg.HTTPClientTimeout.Nanoseconds(), (10 * time.Second).Nanoseconds())
 	})
+
+	t.Run("default LogLevel is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).StringEql(cfg.LogLevel, "info")
+	})
+
+	t.Run("sets LogLevel from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optLogLevel, "error"})
+
+		tests.H(t).StringEql(cfg.LogLevel, "error")
+	})
 }

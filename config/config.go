@@ -26,6 +26,8 @@ type Config struct {
 
 	// The filesystem path where the file determining the master count is
 	MasterCountFile string
+
+	LogLevel string
 }
 
 // Default values for config files
@@ -38,6 +40,7 @@ const (
 	defaultDefaultDocRoot    = "/opt/mesosphere/active/dcos-ui/usr"
 	defaultVersionsRoot      = "./versions"
 	defaultMasterCountFile   = "/opt/mesosphere/etc/master_count"
+	defaultLogLevel          = "info"
 )
 
 const (
@@ -47,6 +50,7 @@ const (
 	optListenNet         = "listen-net"
 	optListenAddress     = "listen-addr"
 	optMasterCountFile   = "master-count-file"
+	optLogLevel          = "log-level"
 	optUniverseURL       = "universe-url"
 	optVersionsRoot      = "versions-root"
 )
@@ -63,6 +67,7 @@ func NewDefaultConfig() *Config {
 		defaultDefaultDocRoot,
 		defaultVersionsRoot,
 		defaultMasterCountFile,
+		defaultLogLevel,
 	}
 }
 
@@ -95,6 +100,7 @@ func Parse(args []string) *Config {
 	cliArgs.StringVar(&cfg.DefaultDocRoot, optDefaultDocRoot, cfg.DefaultDocRoot, "The filesystem path to serve the default UI from (pre-bundled).")
 	cliArgs.StringVar(&cfg.VersionsRoot, optVersionsRoot, cfg.VersionsRoot, "The filesystem path where downloaded versions are stored.")
 	cliArgs.StringVar(&cfg.MasterCountFile, optMasterCountFile, cfg.MasterCountFile, "The filesystem path to the file determining the master count.")
+	cliArgs.StringVar(&cfg.LogLevel, optLogLevel, cfg.LogLevel, "The output logging level.")
 	cliArgs.DurationVar(&cfg.HTTPClientTimeout, optHTTPClientTimeout, cfg.HTTPClientTimeout, "The default http client timeout for requests.")
 	cliArgs.Parse(args)
 

@@ -11,6 +11,7 @@ import (
 	"github.com/dcos/dcos-ui-update-service/downloader"
 	"github.com/dcos/dcos-ui-update-service/fileHandler"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 )
 
@@ -46,6 +47,7 @@ func (um *Client) LoadVersion(version string, targetDirectory string) error {
 	if listErr != nil {
 		return fmt.Errorf("Could not reach the server: %#v", listErr)
 	}
+	logrus.WithFields(logrus.Fields{"versions": listVersionResp}).Info("Loading Version: Retrieved package versions from cosmos")
 
 	if !listVersionResp.IncludesTargetVersion(version) {
 		return fmt.Errorf("The requested version is not available")
@@ -59,20 +61,28 @@ func (um *Client) LoadVersion(version string, targetDirectory string) error {
 	if getAssetsErr != nil {
 		return errors.Wrap(getAssetsErr, "Could not reach the server")
 	}
+	logrus.Info("Loading Version: Retrieved package assets from cosmos")
 
 	uiBundleName := cosmos.PackageAssetNameString("dcos-ui-bundle")
 	uiBundleURI, found := assets[uiBundleName]
 	if !found {
 		return fmt.Errorf("Could not find asset with the name %s", uiBundleName)
 	}
+	logrus.WithFields(logrus.Fields{
+		"asset": uiBundleURI,
+		"name":  uiBundleName,
+	}).Info("Loading Version: Found asset by name")
+
 	uiBundleURL, err := url.Parse(string(uiBundleURI))
 	if err != nil {
 		return errors.Wrap(err, "ui bundle URI could not be parsed to a URL")
 	}
+	logrus.WithFields(logrus.Fields{"url": uiBundleURL}).Info("Loading Version: Bundle URI parsed to a URL")
 
 	if umErr := um.Loader.DownloadAndUnpack(uiBundleURL, targetDirectory); umErr != nil {
 		return errors.Wrap(umErr, fmt.Sprintf("Could not load %q", uiBundleURI))
 	}
+	logrus.Info("Loading Version: Completed download and unpack")
 
 	return nil
 }
@@ -100,6 +110,7 @@ func (um *Client) CurrentVersion() (string, error) {
 	}
 
 	if len(dirs) == 0 {
+		logrus.Info("Retrieving current version: No version directory found")
 		return "", nil
 	}
 
@@ -107,6 +118,7 @@ func (um *Client) CurrentVersion() (string, error) {
 		return "", fmt.Errorf("Detected more than one directory: %#v", dirs)
 	}
 
+	logrus.WithFields(logrus.Fields{"currentVersion": dirs[0]}).Info("Found current version")
 	// by looking at the dirs for now
 	return dirs[0], nil
 }
@@ -115,6 +127,7 @@ func (um *Client) CurrentVersion() (string, error) {
 // or returns an error is the current version cannot be determined
 func (um *Client) PathToCurrentVersion() (string, error) {
 	currentVersion, err := um.CurrentVersion()
+	logrus.WithFields(logrus.Fields{"currentVersion": currentVersion}).Info("Retrieving path to current version: Found current version")
 	if err != nil {
 		return "", err
 	}
@@ -123,6 +136,7 @@ func (um *Client) PathToCurrentVersion() (string, error) {
 	}
 
 	versionPath := path.Join(um.VersionPath, currentVersion, "dist")
+	logrus.WithFields(logrus.Fields{"versionPath": currentVersion}).Info("Found path to current version")
 	return versionPath, nil
 }
 
@@ -137,6 +151,7 @@ func (um *Client) UpdateToVersion(version string, fileServer fileHandler.UIFileS
 
 	if len(currentVersion) > 0 && currentVersion == version {
 		// noop if we are currently on the requested version
+		logrus.Info("Currently on requested version")
 		return nil
 	}
 
@@ -146,18 +161,21 @@ func (um *Client) UpdateToVersion(version string, fileServer fileHandler.UIFileS
 	if err != nil {
 		return errors.Wrap(err, "Could not create directory")
 	}
+	logrus.WithFields(logrus.Fields{"directory": targetDir}).Info("Created directory for next version")
 
 	// Update to next version
 	err = um.LoadVersion(version, targetDir)
 	if err != nil {
 		// Install failed delete the targetDir
 		um.Fs.RemoveAll(targetDir)
+		logrus.Error("Update to new version failed, deleted target directory")
 		return errors.Wrap(err, "Could not load new version")
 	}
 	err = fileServer.UpdateDocumentRoot(path.Join(targetDir, "dist"))
 	if err != nil {
 		// Swap to new version failed, abort update
 		um.Fs.RemoveAll(targetDir)
+		logrus.Error("Switch to new version failed, abort update")
 		return errors.Wrap(err, "Could not load new version")
 	}
 
@@ -167,6 +185,7 @@ func (um *Client) UpdateToVersion(version string, fileServer fileHandler.UIFileS
 		if err != nil {
 			return errors.Wrap(err, "Could not remove old version")
 		}
+		logrus.Error("Removed old version directory")
 	}
 
 	return nil
@@ -180,6 +199,7 @@ func (um *Client) ResetVersion() error {
 	}
 
 	if len(currentVersion) == 0 {
+		logrus.Info("No current version to reset")
 		return nil
 	}
 
@@ -187,5 +207,6 @@ func (um *Client) ResetVersion() error {
 	if err != nil {
 		return errors.Wrap(err, "Could not remove current version")
 	}
+	logrus.Info("Removed current version")
 	return nil
 }
