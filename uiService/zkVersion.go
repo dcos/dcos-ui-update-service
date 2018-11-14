@@ -44,7 +44,7 @@ type versionChangeListeners struct {
 }
 
 var (
-	ZookeeperNotConnectedError = errors.New("Zookeeper is not currently connected")
+	ErrZookeeperNotConnected = errors.New("Zookeeper is not currently connected")
 )
 
 // NewZKVersionStore creates a new zookeeper version store from the config.
@@ -70,7 +70,7 @@ func (zks *zkVersionStore) CurrentVersion() (UIVersion, error) {
 // UpdateCurrentVersion sets the UIVersion stored to the newVersion provided
 func (zks *zkVersionStore) UpdateCurrentVersion(newVersion UIVersion) error {
 	if zks.client == nil || zks.client.ClientState() != zookeeper.Connected {
-		return ZookeeperNotConnectedError
+		return ErrZookeeperNotConnected
 	}
 
 	found, err := zks.client.Exists(zks.versionPath)

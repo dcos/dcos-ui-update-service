@@ -25,6 +25,8 @@ func makeZKStore(version string) (*zkVersionStore, *fakeZKClient) {
 }
 
 func TestZKVersionStore(t *testing.T) {
+	t.Parallel()
+
 	t.Run("CurrentVersion() returns cached current version", func(t *testing.T) {
 		expectedVersion := "1.0.0"
 
@@ -171,7 +173,7 @@ func TestZKVersionStore(t *testing.T) {
 		err := store.UpdateCurrentVersion("1.0.0")
 		tests.H(t).NotNil(err)
 
-		tests.H(t).StringContains(err.Error(), ZookeeperNotConnectedError.Error())
+		tests.H(t).StringContains(err.Error(), ErrZookeeperNotConnected.Error())
 	})
 
 	t.Run("UpdateCurrentVersion() fails if zk.Exists errors", func(t *testing.T) {
