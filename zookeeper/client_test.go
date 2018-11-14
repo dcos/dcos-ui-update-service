@@ -10,6 +10,9 @@ import (
 
 func TestZookeeper(t *testing.T) {
 	t.Run("client can connect to zk", func(t *testing.T) {
+		// This test cannot be run in CI as it uses Docker
+		t.SkipNow()
+
 		zkControl, err := tests.StartZookeeper()
 
 		tests.H(t).IsNil(err)
