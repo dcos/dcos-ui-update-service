@@ -31,7 +31,6 @@ type ZKClient interface {
 	RegisterListener(listener StateListener)
 
 	Exists(path string) (bool, error)
-	ExistsW(path string) (bool, <-chan zk.Event, error)
 	Get(path string) ([]byte, error)
 	Create(path string, data []byte, perms []int32) error
 	Set(path string, data []byte) error
@@ -90,11 +89,6 @@ func (c *Client) ClientState() ClientState {
 func (c *Client) Exists(path string) (bool, error) {
 	found, _, err := c.conn.Exists(path)
 	return found, err
-}
-
-func (c *Client) ExistsW(path string) (bool, <-chan zk.Event, error) {
-	found, _, watch, err := c.conn.ExistsW(path)
-	return found, watch, err
 }
 
 func (c *Client) Get(path string) ([]byte, error) {

@@ -187,4 +187,16 @@ func TestConfig(t *testing.T) {
 
 		tests.H(t).Int64Eql(cfg.ZKConnectionTimeout.Nanoseconds(), (20 * time.Second).Nanoseconds())
 	})
+
+	t.Run("default ZKPollingInterval is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).Int64Eql(cfg.ZKPollingInterval.Nanoseconds(), defaultZKPollingInterval.Nanoseconds())
+	})
+
+	t.Run("sets ZKPollingInterval from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optZKPollingInterval, "20s"})
+
+		tests.H(t).Int64Eql(cfg.ZKPollingInterval.Nanoseconds(), (20 * time.Second).Nanoseconds())
+	})
 }

@@ -1,13 +1,13 @@
 package uiService
 
 import (
-	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/dcos/dcos-ui-update-service/tests"
 	"github.com/dcos/dcos-ui-update-service/zookeeper"
-	"github.com/samuel/go-zookeeper/zk"
+	"github.com/pkg/errors"
 )
 
 func makeZKStore(version string) (*zkVersionStore, *fakeZKClient) {
@@ -21,6 +21,9 @@ func makeZKStore(version string) (*zkVersionStore, *fakeZKClient) {
 		client:      fakeClient,
 		zkBasePath:  "/dcos/ui-service-test",
 		versionPath: "/dcos/ui-service-test/version",
+		watchState: versionWatchState{
+			pollingInterval: 20 * time.Millisecond,
+		},
 	}, fakeClient
 }
 
@@ -55,67 +58,10 @@ func TestZKVersionStore(t *testing.T) {
 		tests.H(t).StringEql(string(cv), expectedVersion)
 	})
 
-	t.Run("UpdateCurrentVersion() creates a new zk Node if it doesn't exist", func(t *testing.T) {
-		store, client := makeZKStore("1.0.0")
-		client.ClientStateResult = zookeeper.Connected
-
-		var createCalled bool
-		client.CreateCall = func(path string, data []byte, perms []int32) {
-			createCalled = true
-		}
-
-		err := store.UpdateCurrentVersion(UIVersion("1.1.0"))
-		tests.H(t).IsNil(err)
-		tests.H(t).BoolEql(createCalled, true)
-	})
-
-	t.Run("UpdateCurrentVersion() populates new zk Node with string version", func(t *testing.T) {
-		store, client := makeZKStore("1.0.0")
-
-		var createData []byte
-		client.CreateCall = func(path string, data []byte, perms []int32) {
-			createData = data
-		}
-		expectedVersion := "1.1.0"
-
-		err := store.UpdateCurrentVersion(UIVersion(expectedVersion))
-		tests.H(t).IsNil(err)
-
-		tests.H(t).StringEql(string(createData), expectedVersion)
-	})
-
-	t.Run("UpdateCurrentVersion() creates a new zk Node with PermAll", func(t *testing.T) {
-		store, client := makeZKStore("1.0.0")
-
-		var newNodePerms []int32
-		client.CreateCall = func(path string, data []byte, perms []int32) {
-			newNodePerms = perms
-		}
-
-		err := store.UpdateCurrentVersion(UIVersion("1.1.0"))
-		tests.H(t).IsNil(err)
-
-		newNodePermsMatch := true
-		if len(newNodePerms) != len(zookeeper.PermAll) {
-			newNodePermsMatch = false
-		} else {
-			for i, _ := range zookeeper.PermAll {
-				if newNodePerms[i] != zookeeper.PermAll[i] {
-					newNodePermsMatch = false
-				}
-			}
-		}
-
-		if !newNodePermsMatch {
-			t.Errorf("Expected version node to have PermAll, got %v", newNodePerms)
-		}
-	})
-
-	t.Run("UpdateCurrentVersion() sets the zk Node if it does exist", func(t *testing.T) {
+	t.Run("UpdateCurrentVersion() sets the zk Node", func(t *testing.T) {
 		store, client := makeZKStore("1.0.0")
 
 		var setCalled bool
-		client.ExistsResult = true
 		client.SetCall = func(path string, data []byte) {
 			setCalled = true
 		}
@@ -129,7 +75,6 @@ func TestZKVersionStore(t *testing.T) {
 		store, client := makeZKStore("1.0.0")
 
 		var setData []byte
-		client.ExistsResult = true
 		client.SetCall = func(path string, data []byte) {
 			setData = data
 		}
@@ -176,32 +121,9 @@ func TestZKVersionStore(t *testing.T) {
 		tests.H(t).StringContains(err.Error(), ErrZookeeperNotConnected.Error())
 	})
 
-	t.Run("UpdateCurrentVersion() fails if zk.Exists errors", func(t *testing.T) {
-		expectedError := errors.New("ZK Exist failure")
-		store, client := makeZKStore("1.0.0")
-		client.ExistsError = expectedError
-
-		err := store.UpdateCurrentVersion(UIVersion("1.1.0"))
-		tests.H(t).NotNil(err)
-
-		tests.H(t).StringContains(err.Error(), expectedError.Error())
-	})
-
-	t.Run("UpdateCurrentVersion() fails if zk.Create errors", func(t *testing.T) {
-		expectedError := errors.New("ZK Create failure")
-		store, client := makeZKStore("1.0.0")
-		client.CreateError = expectedError
-
-		err := store.UpdateCurrentVersion(UIVersion("1.1.0"))
-		tests.H(t).NotNil(err)
-
-		tests.H(t).StringContains(err.Error(), expectedError.Error())
-	})
-
 	t.Run("UpdateCurrentVersion() fails if zk.Set errors", func(t *testing.T) {
 		expectedError := errors.New("ZK Set failure")
 		store, client := makeZKStore("1.0.0")
-		client.ExistsResult = true
 		client.SetError = expectedError
 
 		err := store.UpdateCurrentVersion(UIVersion("1.1.0"))
@@ -254,6 +176,7 @@ func TestZKVersionStore(t *testing.T) {
 		client.GetResult = []byte("2.0.0")
 
 		store.handleZKStateChange(zookeeper.Connected)
+		defer store.handleZKStateChange(zookeeper.Disconnected)
 
 		cv, _ := store.CurrentVersion()
 		tests.H(t).StringEql(string(cv), "2.0.0")
@@ -265,9 +188,98 @@ func TestZKVersionStore(t *testing.T) {
 		client.ExistsResult = false
 
 		store.handleZKStateChange(zookeeper.Connected)
+		defer store.handleZKStateChange(zookeeper.Disconnected)
 
 		cv, _ := store.CurrentVersion()
 		tests.H(t).StringEql(string(cv), "")
+	})
+
+	t.Run("handleZKStateChange() creates the node if it doesn't exist", func(t *testing.T) {
+		store, client := makeZKStore("1.0.0")
+		store.zkClientState = zookeeper.Disconnected
+		client.ExistsResult = false
+		var createCalled bool
+		client.CreateCall = func(path string, data []byte, perms []int32) {
+			createCalled = true
+		}
+
+		store.handleZKStateChange(zookeeper.Connected)
+		defer store.handleZKStateChange(zookeeper.Disconnected)
+
+		tests.H(t).BoolEql(createCalled, true)
+	})
+
+	t.Run("UpdateCurrentVersion() creates a new zk Node with PermAll", func(t *testing.T) {
+		store, client := makeZKStore("1.0.0")
+		store.zkClientState = zookeeper.Disconnected
+		client.ExistsResult = false
+
+		var newNodePerms []int32
+		client.CreateCall = func(path string, data []byte, perms []int32) {
+			newNodePerms = perms
+		}
+
+		store.handleZKStateChange(zookeeper.Connected)
+		defer store.handleZKStateChange(zookeeper.Disconnected)
+
+		newNodePermsMatch := true
+		if len(newNodePerms) != len(zookeeper.PermAll) {
+			newNodePermsMatch = false
+		} else {
+			for i := range zookeeper.PermAll {
+				if newNodePerms[i] != zookeeper.PermAll[i] {
+					newNodePermsMatch = false
+				}
+			}
+		}
+
+		if !newNodePermsMatch {
+			t.Errorf("Expected version node to have PermAll, got %v", newNodePerms)
+		}
+	})
+
+	t.Run("handleZKStateChange() panics if err checking node exists", func(t *testing.T) {
+		store, client := makeZKStore("1.0.0")
+		store.zkClientState = zookeeper.Disconnected
+		client.ExistsError = errors.New("no zk for you")
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("initCurrentVersion did not panic when Exists returned an error")
+			}
+		}()
+
+		store.handleZKStateChange(zookeeper.Connected)
+	})
+
+	t.Run("handleZKStateChange() panics if err creating node", func(t *testing.T) {
+		store, client := makeZKStore("1.0.0")
+		store.zkClientState = zookeeper.Disconnected
+		client.ExistsResult = false
+		client.CreateError = errors.New("no zk for you")
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("initCurrentVersion() did not panic when zk Create returned an error")
+			}
+		}()
+
+		store.handleZKStateChange(zookeeper.Connected)
+	})
+
+	t.Run("handleZKStateChange() panics if err getting node value", func(t *testing.T) {
+		store, client := makeZKStore("1.0.0")
+		store.zkClientState = zookeeper.Disconnected
+		client.ExistsResult = true
+		client.GetError = errors.New("no zk for you")
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("initCurrentVersion() did not panic when zk Get returned an error")
+			}
+		}()
+
+		store.handleZKStateChange(zookeeper.Connected)
 	})
 
 	t.Run("handleZKStateChange() starts watching zk for changes when connected", func(t *testing.T) {
@@ -276,6 +288,7 @@ func TestZKVersionStore(t *testing.T) {
 		client.ExistsResult = false
 
 		store.handleZKStateChange(zookeeper.Connected)
+		defer store.handleZKStateChange(zookeeper.Disconnected)
 
 		tests.H(t).BoolEql(store.watchState.active, true)
 	})
@@ -288,7 +301,9 @@ func TestZKVersionStore(t *testing.T) {
 		store.handleZKStateChange(zookeeper.Connected)
 
 		//ensure initial watch is started
+		store.watchState.Lock()
 		tests.H(t).BoolEql(store.watchState.active, true)
+		store.watchState.Unlock()
 
 		<-time.After(10 * time.Millisecond)
 
@@ -299,108 +314,43 @@ func TestZKVersionStore(t *testing.T) {
 		<-time.After(10 * time.Millisecond)
 
 		// ensure we stopped watching
+		store.watchState.Lock()
 		tests.H(t).BoolEql(store.watchState.active, false)
-	})
-
-	t.Run("WatchForVersionChange() listener is called when zk version node is created", func(t *testing.T) {
-		store, client := makeZKStore("")
-		store.zkClientState = zookeeper.Disconnected
-		client.ExistsResult = false
-		client.GetResult = []byte("1.2.0")
-
-		// register for version updates
-		var versionCalls []UIVersion
-		store.WatchForVersionChange(func(newVersion UIVersion) {
-			versionCalls = append(versionCalls, newVersion)
-		})
-
-		// connect store to start watch
-		store.handleZKStateChange(zookeeper.Connected)
-
-		// wait a little for async calls
-		<-time.After(10 * time.Millisecond)
-
-		client.ExistsWatch <- zk.Event{
-			Type:  zk.EventNodeCreated,
-			State: zk.StateConnected,
-		}
-
-		// wait a little for async calls
-		<-time.After(10 * time.Millisecond)
-
-		// called once when we register then again for the event
-		tests.H(t).IntEql(len(versionCalls), 2)
-
-		tests.H(t).StringEql(string(versionCalls[0]), "")
-		tests.H(t).StringEql(string(versionCalls[1]), "1.2.0")
+		store.watchState.Unlock()
 	})
 
 	t.Run("WatchForVersionChange() listener is called when zk version updates", func(t *testing.T) {
 		store, client := makeZKStore("")
 		store.zkClientState = zookeeper.Disconnected
 		client.ExistsResult = true
-		client.GetResult = []byte("1.0.0")
+		client.GetResults = append(client.GetResults, []byte("1.0.0"))
+		client.GetResults = append(client.GetResults, []byte("1.1.0"))
 
 		// register for version updates
+		var wg sync.WaitGroup
+		var vcMutex sync.Mutex
+		wg.Add(2)
 		var versionCalls []UIVersion
 		store.WatchForVersionChange(func(newVersion UIVersion) {
+			vcMutex.Lock()
+			defer vcMutex.Unlock()
 			versionCalls = append(versionCalls, newVersion)
+			wg.Done()
 		})
 
 		// connect store to start watch
 		store.handleZKStateChange(zookeeper.Connected)
+		defer store.handleZKStateChange(zookeeper.Disconnected)
 
-		// wait a little for async calls
-		<-time.After(10 * time.Millisecond)
+		wg.Wait()
 
-		client.GetResult = []byte("1.1.0")
-
-		client.ExistsWatch <- zk.Event{
-			Type:  zk.EventNodeDataChanged,
-			State: zk.StateConnected,
-		}
-
-		// wait a little for async calls
-		<-time.After(10 * time.Millisecond)
-
+		vcMutex.Lock()
+		defer vcMutex.Unlock()
 		// called once when we register then again for the event
 		tests.H(t).IntEql(len(versionCalls), 2)
 
 		tests.H(t).StringEql(string(versionCalls[0]), "1.0.0")
 		tests.H(t).StringEql(string(versionCalls[1]), "1.1.0")
-	})
-
-	t.Run("version watch sets to PreBundledUI if zk node is deleted", func(t *testing.T) {
-		store, client := makeZKStore("1.2.0")
-		store.zkClientState = zookeeper.Disconnected
-		client.ExistsResult = true
-		client.GetResult = []byte("1.2.0")
-
-		// register for version updates
-		var versionCalls []UIVersion
-		store.WatchForVersionChange(func(newVersion UIVersion) {
-			versionCalls = append(versionCalls, newVersion)
-		})
-
-		// connect store to start watch
-		store.handleZKStateChange(zookeeper.Connected)
-
-		// wait a little for async calls
-		<-time.After(10 * time.Millisecond)
-
-		client.ExistsWatch <- zk.Event{
-			Type:  zk.EventNodeDeleted,
-			State: zk.StateConnected,
-		}
-
-		// wait a little for async calls
-		<-time.After(10 * time.Millisecond)
-
-		// called once when we register then again for the event
-		tests.H(t).IntEql(len(versionCalls), 2)
-
-		tests.H(t).StringEql(string(versionCalls[0]), "1.2.0")
-		tests.H(t).StringEql(string(versionCalls[1]), "")
 	})
 }
 
@@ -413,8 +363,9 @@ type fakeZKClient struct {
 	ClientStateResult zookeeper.ClientState
 	Listeners         []zookeeper.StateListener
 	ExistsResult      bool
-	ExistsWatch       chan zk.Event
 	GetResult         []byte
+	GetResults        [][]byte
+	GetResultsIndex   int
 
 	CreateCall func(string, []byte, []int32)
 	SetCall    func(string, []byte)
@@ -448,19 +399,17 @@ func (zkc *fakeZKClient) Exists(path string) (bool, error) {
 	return zkc.ExistsResult, nil
 }
 
-func (zkc *fakeZKClient) ExistsW(path string) (bool, <-chan zk.Event, error) {
-	if zkc.ExistsError != nil {
-		return false, nil, zkc.ExistsError
-	}
-	if zkc.ExistsWatch == nil {
-		zkc.ExistsWatch = make(chan zk.Event)
-	}
-	return zkc.ExistsResult, zkc.ExistsWatch, nil
-}
-
 func (zkc *fakeZKClient) Get(path string) ([]byte, error) {
 	if zkc.GetError != nil {
 		return nil, zkc.GetError
+	}
+	numGetResults := len(zkc.GetResults)
+	if numGetResults > 0 {
+		result := zkc.GetResults[zkc.GetResultsIndex]
+		if zkc.GetResultsIndex < (numGetResults - 1) {
+			zkc.GetResultsIndex++
+		}
+		return result, nil
 	}
 	return zkc.GetResult, nil
 }

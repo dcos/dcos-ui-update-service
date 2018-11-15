@@ -35,6 +35,7 @@ type Config struct {
 	ZKZnodeOwner        string
 	ZKSessionTimeout    time.Duration
 	ZKConnectionTimeout time.Duration
+	ZKPollingInterval   time.Duration
 }
 
 // Default values for config files
@@ -54,6 +55,7 @@ const (
 	defaultZKZnodeOwner      = ""
 	defaultZKSessionTimeout  = 5 * time.Second
 	defaultZKConnectTimeout  = 5 * time.Second
+	defaultZKPollingInterval = 30 * time.Second
 )
 
 const (
@@ -72,6 +74,7 @@ const (
 	optZKZnodeOwner      = "zk-znode-owner"
 	optZKSessionTimeout  = "zk-session-timeout"
 	optZKConnectTimeout  = "zk-connect-timeout"
+	optZKPollingInterval = "zk-poll-int"
 )
 
 func NewDefaultConfig() *Config {
@@ -93,6 +96,7 @@ func NewDefaultConfig() *Config {
 		defaultZKZnodeOwner,
 		defaultZKSessionTimeout,
 		defaultZKConnectTimeout,
+		defaultZKPollingInterval,
 	}
 }
 
@@ -133,7 +137,7 @@ func Parse(args []string) *Config {
 	cliArgs.StringVar(&cfg.ZKZnodeOwner, optZKZnodeOwner, cfg.ZKZnodeOwner, "The ZK owner of the base path.")
 	cliArgs.DurationVar(&cfg.ZKSessionTimeout, optZKSessionTimeout, cfg.ZKSessionTimeout, "ZK session timeout.")
 	cliArgs.DurationVar(&cfg.ZKConnectionTimeout, optZKConnectTimeout, cfg.ZKConnectionTimeout, "Timeout to establish initial zookeeper connection.")
-
+	cliArgs.DurationVar(&cfg.ZKPollingInterval, optZKPollingInterval, cfg.ZKPollingInterval, "Interval to check zookeeper node for version updates.")
 	cliArgs.Parse(args)
 
 	return cfg
