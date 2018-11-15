@@ -75,17 +75,17 @@ func (zks *zkVersionStore) UpdateCurrentVersion(newVersion UIVersion) error {
 
 	found, err := zks.client.Exists(zks.versionPath)
 	if err != nil {
-		return errors.Wrap(err, "Failed to create version in ZK,")
+		return errors.Wrap(err, "Failed to create version in ZK, not able to check if version node exists")
 	}
 	if found {
 		err = zks.client.Set(zks.versionPath, []byte(newVersion))
 		if err != nil {
-			return errors.Wrap(err, "Failed to create version in ZK,")
+			return errors.Wrap(err, "Failed to create version in ZK, not able to set the version node")
 		}
 	} else {
 		err = zks.client.Create(zks.versionPath, []byte(newVersion), zookeeper.PermAll)
 		if err != nil {
-			return errors.Wrap(err, "Failed to create version in ZK,")
+			return errors.Wrap(err, "Failed to create version in ZK, not able to create the version node")
 		}
 	}
 	zks.updateLocalCurrentVersion(newVersion)
