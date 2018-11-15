@@ -10,7 +10,6 @@ import (
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/fileHandler"
-	our_http "github.com/dcos/dcos-ui-update-service/http"
 	"github.com/dcos/dcos-ui-update-service/updateManager"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -25,8 +24,6 @@ type UIService struct {
 	UpdateManager *updateManager.Client
 
 	MasterCounter dcos.MasterCounter
-
-	Client *our_http.Client
 }
 
 // SetupUIHandler create UIFileHandler for service ui and set default directory to
@@ -42,12 +39,8 @@ func SetupUIHandler(cfg *config.Config, um *updateManager.Client) *fileHandler.U
 
 func setup(args []string) (*UIService, error) {
 	cfg := config.Parse(args)
-	httpClient, err := our_http.New(cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not build http client: %s", err.Error())
-		os.Exit(1)
-	}
-	updateManager, err := updateManager.NewClient(cfg, httpClient)
+
+	updateManager, err := updateManager.NewClient(cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create update manager")
 	}
@@ -60,7 +53,6 @@ func setup(args []string) (*UIService, error) {
 		Config:        cfg,
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
-		Client:        httpClient,
 		MasterCounter: dcos,
 	}, nil
 }
@@ -160,8 +152,6 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		service.Client.SetRequestHeaders(r.Header)
-		defer service.Client.ClearRequestHeaders()
 
 		err := service.UpdateManager.UpdateToVersion(version, service.UIHandler)
 

@@ -12,14 +12,13 @@ import (
 	"os"
 	"path/filepath"
 
-	our_http "github.com/dcos/dcos-ui-update-service/http"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 )
 
 // Client is used to download a package from a URL and extract it to the filesystem
 type Client struct {
-	client *our_http.Client
+	client *http.Client
 	Fs     afero.Fs
 }
 
@@ -108,9 +107,9 @@ func (d *Client) DownloadAndUnpack(fileURL *url.URL, targetDirectory string) err
 	return nil
 }
 
-func New(httpClient *our_http.Client, fs afero.Fs) *Client {
+func New(fs afero.Fs) *Client {
 	return &Client{
-		client: httpClient,
+		client: &http.Client{},
 		Fs:     fs,
 	}
 }

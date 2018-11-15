@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"testing"
 
-	our_http "github.com/dcos/dcos-ui-update-service/http"
 	"github.com/spf13/afero"
 )
 
@@ -21,7 +20,7 @@ func TestDownloader(t *testing.T) {
 			defer server.Close()
 			appFS := afero.NewMemMapFs()
 
-			loader := New(our_http.NewClient(server.Client()), appFS)
+			loader := New(appFS)
 
 			dest, err := ioutil.TempDir("", "downloader_test")
 			if err != nil {
@@ -49,7 +48,7 @@ func TestDownloader(t *testing.T) {
 			defer server.Close()
 			appFS := afero.NewMemMapFs()
 
-			loader := New(our_http.NewClient(server.Client()), appFS)
+			loader := New(appFS)
 
 			dest, err := ioutil.TempDir("", "downloader_test")
 			if err != nil {
@@ -67,7 +66,7 @@ func TestDownloader(t *testing.T) {
 		t.Run("should throw if server errors", func(t *testing.T) {
 			appFS := afero.NewMemMapFs()
 
-			loader := New(our_http.NewClient(&http.Client{}), appFS)
+			loader := New(appFS)
 
 			dest, err := ioutil.TempDir("", "downloader_test")
 			if err != nil {

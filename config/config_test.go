@@ -103,28 +103,4 @@ func TestConfig(t *testing.T) {
 
 		tests.H(t).Int64Eql(cfg.HTTPClientTimeout.Nanoseconds(), (10 * time.Second).Nanoseconds())
 	})
-
-	t.Run("default CACertFile is correct", func(t *testing.T) {
-		cfg := Parse([]string{})
-
-		tests.H(t).StringEql(cfg.CACertFile, "")
-	})
-
-	t.Run("sets CACertFile from cli arg", func(t *testing.T) {
-		cfg := Parse([]string{"-" + optCaCert, "./testdata/ca-cert"})
-
-		tests.H(t).StringEql(cfg.CACertFile, "./testdata/ca-cert")
-	})
-
-	t.Run("default IAMConfig is correct", func(t *testing.T) {
-		cfg := Parse([]string{})
-
-		tests.H(t).StringEql(cfg.IAMConfig, "")
-	})
-
-	t.Run("sets IAMConfig from cli arg", func(t *testing.T) {
-		cfg := Parse([]string{"-" + optIAMConfig, "./testdata/iam-config"})
-
-		tests.H(t).StringEql(cfg.IAMConfig, "./testdata/iam-config")
-	})
 }

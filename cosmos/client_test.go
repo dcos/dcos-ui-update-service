@@ -8,8 +8,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
-
-	our_http "github.com/dcos/dcos-ui-update-service/http"
 )
 
 var (
@@ -36,7 +34,7 @@ var (
 
 func makeTestClient(server *httptest.Server) *Client {
 	cosmosURL, _ := url.Parse(server.URL)
-	return NewClient(our_http.NewClient(server.Client()), cosmosURL)
+	return NewClient(cosmosURL)
 }
 
 func serveSuccessfulListVersionResponseTestServer(t *testing.T) *httptest.Server {

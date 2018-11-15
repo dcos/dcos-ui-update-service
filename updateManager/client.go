@@ -9,8 +9,7 @@ import (
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/cosmos"
 	"github.com/dcos/dcos-ui-update-service/downloader"
-	"github.com/dcos/dcos-ui-update-service/fileHandler"
-	"github.com/dcos/dcos-ui-update-service/http"
+	"github.com/dcos/dcos-ui-update-service/fileHandler"	
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 )
@@ -22,11 +21,10 @@ type Client struct {
 	UniverseURL *url.URL
 	VersionPath string
 	Fs          afero.Fs
-	client      *http.Client
 }
 
 // NewClient creates a new instance of Client
-func NewClient(cfg *config.Config, httpClient *http.Client) (*Client, error) {
+func NewClient(cfg *config.Config) (*Client, error) {
 	universeURL, err := url.Parse(cfg.UniverseURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse configured Universe URL")
@@ -34,12 +32,11 @@ func NewClient(cfg *config.Config, httpClient *http.Client) (*Client, error) {
 	fs := afero.NewOsFs()
 
 	return &Client{
-		Cosmos:      cosmos.NewClient(httpClient, universeURL),
-		Loader:      downloader.New(httpClient, fs),
+		Cosmos:      cosmos.NewClient(universeURL),
+		Loader:      downloader.New(fs),
 		UniverseURL: universeURL,
 		VersionPath: cfg.VersionsRoot,
 		Fs:          fs,
-		client:      httpClient,
 	}, nil
 }
 
