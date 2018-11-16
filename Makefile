@@ -3,8 +3,8 @@ IMAGE_NAME=dcos/dcos-ui-update-service
 DOCKER_DIR=/src
 
 .PHONY: start 
-start: docker-image
-	$(call inDocker,rerun -v --config=rerun.json)
+start: ## start all containers defined in docker-compose.yml
+  $(shell docker-compose up)
 
 .PHONY: watchTest 
 watchTest: docker-image 
@@ -40,7 +40,6 @@ ifdef NO_DOCKER
 else
   define inDocker
     docker run -p 5000:5000/tcp \
-      -e CLUSTER_URL=$(CLUSTER_URL) \
       -v $(CURRENT_DIR):$(DOCKER_DIR) \
       -it \
       --name dcos-ui-service \

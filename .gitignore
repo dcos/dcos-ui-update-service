@@ -5,3 +5,5 @@ build/
 versions/
 dcos-ui-update-service
 application-build-*
+testdata/localCosmos/node_modules/
+testdata/localCosmos/package-lock.json
