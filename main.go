@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -65,14 +66,18 @@ func setup(args []string) (*UIService, error) {
 	} else {
 		logrus.WithFields(logrus.Fields{"version": version}).Info("Current package version")
 	}
+	
+	versionStore := uiService.NewZKVersionStore(cfg)
 
-	return &UIService{
+	service := &UIService{
 		Config:        cfg,
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
 		MasterCounter: dcos,
-		//		versionStore: uiService.NewZKVersionStore(cfg),
-	}, nil
+		versionStore:  versionStore,
+	}
+
+	return service, nil
 }
 
 // TODO: think about client timeouts https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
@@ -108,6 +113,7 @@ func main() {
 		logrus.Fatal("Found multiple systemd sockets.")
 	}
 
+	registerForVersionChanges(service)
 	if err := Run(service, listener); err != nil {
 		logrus.WithFields(logrus.Fields{"err": err.Error()}).Fatal("Application error")
 	}
@@ -140,19 +146,6 @@ func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {
 
 // UpdateHandler processes update requests
 func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
-	isMultiMaster, err := service.MasterCounter.IsMultiMaster()
-	if err != nil {
-		logrus.WithFields(logrus.Fields{"err": err}).Error("Error checking for multi master setup")
-		return func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	// Unsupported multi master setup
-	if isMultiMaster {
-		return NotImplementedHandler
-	}
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		version := vars["version"]
@@ -163,7 +156,18 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 
-		err := service.UpdateManager.UpdateToVersion(version, service.UIHandler)
+		err := service.UpdateManager.UpdateToVersion(version, func(newVersionPath string) error {
+			updateErr := service.UIHandler.UpdateDocumentRoot(newVersionPath)
+			if updateErr != nil {
+				return errors.Wrap(updateErr, "unable to update the document root to the new version")
+			}
+			newUIVersion := uiService.UIVersion(version)
+			updateErr = service.versionStore.UpdateCurrentVersion(newUIVersion)
+			if updateErr != nil {
+				return errors.Wrap(updateErr, "unable to save new version to the version store")
+			}
+			return nil
+		})
 
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
@@ -180,23 +184,84 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 }
 
 // ResetToDefaultUIHandler processes requests to reset to the default ui
-func ResetToDefaultUIHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
+func ResetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// verify we aren't currently serving pre-bundled version
-		if state.Config.DefaultDocRoot == state.UIHandler.DocumentRoot() {
+		if service.Config.DefaultDocRoot == service.UIHandler.DocumentRoot() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		err := state.UIHandler.UpdateDocumentRoot(state.Config.DefaultDocRoot)
+		err := service.UIHandler.UpdateDocumentRoot(service.Config.DefaultDocRoot)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{"err": err}).Error("Failed to reset to default document root")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		err = state.UpdateManager.ResetVersion()
+
+		storeErr := service.versionStore.UpdateCurrentVersion(uiService.PreBundledUIVersion)
+		if storeErr != nil {
+			fmt.Printf("Failed to update the version store the the PreBundledUIVersion. %#v", storeErr)
+		}
+
+		err = service.UpdateManager.ResetVersion()
 		if err != nil {
 			logrus.WithFields(logrus.Fields{"err": err}).Error("Failed to remove current version when resetting to default document root")
 		}
+
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func registerForVersionChanges(service *UIService) {
+	service.versionStore.WatchForVersionChange(func(newVersion uiService.UIVersion) {
+		handleVersionChange(service, string(newVersion))
+	})
+}
+
+func handleVersionChange(service *UIService, newVersion string) {
+	fmt.Printf("received version '%v' from version store.\n", newVersion) //TODO: Info
+	currentLocalVersion, err := service.UpdateManager.CurrentVersion()
+	if err != nil {
+		fmt.Printf("Failed to handle version change, error getting the current local version. Error: %v\n", err.Error())
+		return
+	}
+	if currentLocalVersion != newVersion {
+		fmt.Printf(
+			"new version '%v' doesn't match current version '%v'. Initiating a version sync.\n",
+			newVersion,
+			currentLocalVersion) //TODO: Info
+
+		if newVersion == "" {
+			// Reset to Pre-bundled version
+			err := service.UIHandler.UpdateDocumentRoot(service.Config.DefaultDocRoot)
+			if err != nil {
+				fmt.Printf("Failed to reset to default document root. %#v", err)
+				return
+			}
+
+			err = service.UpdateManager.ResetVersion()
+			if err != nil {
+				fmt.Printf("Failed to removed current version when reseting to default document root. %#v", err)
+				return
+			}
+
+			fmt.Printf("Successfully reset to default document root from on version sync.")
+			return
+		}
+
+		err := service.UpdateManager.UpdateToVersion(newVersion, func(newVersionPath string) error {
+			updateErr := service.UIHandler.UpdateDocumentRoot(newVersionPath)
+			if updateErr != nil {
+				return errors.Wrap(updateErr, "unable to update the document root to the new version")
+			}
+			return nil
+		})
+
+		if err != nil {
+			fmt.Printf("Version sync to version '%s' failed: %#v\n", newVersion, err)
+			return
+		}
+
+		fmt.Printf("Version sync to version '%s' completed successfully\n", newVersion)
 	}
 }

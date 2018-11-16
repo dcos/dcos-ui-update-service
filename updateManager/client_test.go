@@ -2,7 +2,7 @@ package updateManager
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -384,24 +384,17 @@ func TestClientPathToCurrentVersion(t *testing.T) {
 	})
 }
 
-type MockFileServer struct {
-	DocRoot string
-	Error   error
-}
-
-func (mfs *MockFileServer) UpdateDocumentRoot(documentRoot string) error {
-	if mfs.Error != nil {
-		return mfs.Error
-	}
-	mfs.DocRoot = documentRoot
+func successfulUpdateCompleteCallback(s string) error {
 	return nil
 }
 
-func (mfs *MockFileServer) DocumentRoot() string {
-	return mfs.DocRoot
+func unsuccessfulUpdateCompleteCallback(s string) error {
+	return errors.New("error completing update")
 }
 
 func TestClientUpdateToVersion(t *testing.T) {
+	t.Parallel()
+
 	t.Run("creates update in new dir when no current version exists", func(t *testing.T) {
 		urlChan := make(chan string, 3) // because three requests will be made
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -433,20 +426,15 @@ func TestClientUpdateToVersion(t *testing.T) {
 			VersionPath: versionsPath,
 			Fs:          fs,
 		}
-		mfs := MockFileServer{
-			DocRoot: "/opt/public",
-			Error:   nil,
-		}
 
 		fs.MkdirAll(versionsPath, 0755)
-		err := loader.UpdateToVersion("2.25.2", &mfs)
+		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %#v", err)
 		}
 
 		newVersionPath := path.Join(versionsPath, "2.25.2")
-		newVersionDistPath := path.Join(newVersionPath, "dist")
 		newVersionExists, err := afero.DirExists(fs, newVersionPath)
 
 		if !newVersionExists || err != nil {
@@ -468,11 +456,6 @@ func TestClientUpdateToVersion(t *testing.T) {
 		onlyNewVersionExists := len(versionDirs) == 1
 		if !onlyNewVersionExists {
 			t.Errorf("Expected only new version directory to exist")
-		}
-
-		fileServerUpdated := mfs.DocumentRoot() == newVersionDistPath
-		if !fileServerUpdated {
-			t.Errorf("Expected new version directory to be set as document root")
 		}
 	})
 
@@ -500,13 +483,8 @@ func TestClientUpdateToVersion(t *testing.T) {
 			VersionPath: "/ui-versions",
 			Fs:          fs,
 		}
-		mfs := MockFileServer{
-			DocRoot: "/opt/public",
-			Error:   nil,
-		}
 
-		fs.MkdirAll("/ui-versions/2.25.1", 0755)
-		err := loader.UpdateToVersion("2.25.2", &mfs)
+		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -537,13 +515,8 @@ func TestClientUpdateToVersion(t *testing.T) {
 			VersionPath: "/ui-versions",
 			Fs:          fs,
 		}
-		mfs := MockFileServer{
-			DocRoot: "/opt/public",
-			Error:   nil,
-		}
 
-		fs.MkdirAll("/ui-versions/2.25.1", 0755)
-		err := loader.UpdateToVersion("2.25.2", &mfs)
+		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -587,13 +560,9 @@ func TestClientUpdateToVersion(t *testing.T) {
 			VersionPath: versionsPath,
 			Fs:          fs,
 		}
-		mfs := MockFileServer{
-			DocRoot: "/opt/public",
-			Error:   nil,
-		}
 
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
-		err := loader.UpdateToVersion("2.25.2", &mfs)
+		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %#v", err)
@@ -627,6 +596,7 @@ func TestClientUpdateToVersion(t *testing.T) {
 		defer server.Close()
 		fs := afero.NewMemMapFs()
 		versionsPath := "/ui-versions"
+		fs.MkdirAll("/ui-versions/2.25.1", 0755)
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
@@ -637,13 +607,8 @@ func TestClientUpdateToVersion(t *testing.T) {
 			VersionPath: versionsPath,
 			Fs:          fs,
 		}
-		mfs := MockFileServer{
-			DocRoot: "/opt/public",
-			Error:   nil,
-		}
 
-		fs.MkdirAll("/ui-versions/2.25.1", 0755)
-		err := loader.UpdateToVersion("2.25.1", &mfs)
+		err := loader.UpdateToVersion("2.25.1", successfulUpdateCompleteCallback)
 
 		if err != nil {
 			t.Errorf("Attempting to update to the current version should return with no error, %v", err)
@@ -671,6 +636,7 @@ func TestClientUpdateToVersion(t *testing.T) {
 		defer server.Close()
 		fs := afero.NewMemMapFs()
 		versionsPath := "/ui-versions"
+		fs.MkdirAll("/ui-versions/2.25.1", 0755)
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
@@ -681,13 +647,7 @@ func TestClientUpdateToVersion(t *testing.T) {
 			VersionPath: versionsPath,
 			Fs:          fs,
 		}
-		mfs := MockFileServer{
-			DocRoot: "/ui-versions/2.25.1",
-			Error:   fmt.Errorf("oh no bad stuff"),
-		}
-
-		fs.MkdirAll("/ui-versions/2.25.1", 0755)
-		err := loader.UpdateToVersion("2.25.2", &mfs)
+		err := loader.UpdateToVersion("2.25.2", unsuccessfulUpdateCompleteCallback)
 
 		if err == nil {
 			t.Fatalf("Expected no error, got %#v", err)
@@ -708,6 +668,8 @@ func TestClientUpdateToVersion(t *testing.T) {
 }
 
 func TestClientResetVersion(t *testing.T) {
+	t.Parallel()
+
 	t.Run("returns error if cant get current version", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
 		// Close the server when test finishes
