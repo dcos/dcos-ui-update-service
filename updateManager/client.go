@@ -9,7 +9,7 @@ import (
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/cosmos"
 	"github.com/dcos/dcos-ui-update-service/downloader"
-	"github.com/dcos/dcos-ui-update-service/fileHandler"	
+	"github.com/dcos/dcos-ui-update-service/fileHandler"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 )
@@ -154,7 +154,7 @@ func (um *Client) UpdateToVersion(version string, fileServer fileHandler.UIFileS
 		um.Fs.RemoveAll(targetDir)
 		return errors.Wrap(err, "Could not load new version")
 	}
-	err = fileServer.UpdateDocumentRoot(targetDir)
+	err = fileServer.UpdateDocumentRoot(path.Join(targetDir, "dist"))
 	if err != nil {
 		// Swap to new version failed, abort update
 		um.Fs.RemoveAll(targetDir)

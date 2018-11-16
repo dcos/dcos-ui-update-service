@@ -446,6 +446,7 @@ func TestClientUpdateToVersion(t *testing.T) {
 		}
 
 		newVersionPath := path.Join(versionsPath, "2.25.2")
+		newVersionDistPath := path.Join(newVersionPath, "dist")
 		newVersionExists, err := afero.DirExists(fs, newVersionPath)
 
 		if !newVersionExists || err != nil {
@@ -469,7 +470,7 @@ func TestClientUpdateToVersion(t *testing.T) {
 			t.Errorf("Expected only new version directory to exist")
 		}
 
-		fileServerUpdated := mfs.DocumentRoot() == newVersionPath
+		fileServerUpdated := mfs.DocumentRoot() == newVersionDistPath
 		if !fileServerUpdated {
 			t.Errorf("Expected new version directory to be set as document root")
 		}
