@@ -8,13 +8,12 @@ import (
 	"net/url"
 	"path"
 
-	our_http "github.com/dcos/dcos-ui-update-service/http"
 	"github.com/pkg/errors"
 )
 
 // Client abstracts common API calls against Cosmos
 type Client struct {
-	httpClient  *our_http.Client
+	httpClient  *http.Client
 	UniverseURL *url.URL
 }
 
@@ -146,9 +145,9 @@ func (c *Client) GetPackageAssets(packageName string, packageVersion string) (ma
 	return assets, nil
 }
 
-func NewClient(httpClient *our_http.Client, universeURL *url.URL) *Client {
+func NewClient(universeURL *url.URL) *Client {
 	return &Client{
-		httpClient:  httpClient,
+		httpClient:  &http.Client{},
 		UniverseURL: universeURL,
 	}
 }

@@ -26,11 +26,6 @@ type Config struct {
 
 	// The filesystem path where the file determining the master count is
 	MasterCountFile string
-
-	// The filesystem path where the cert file is, for making auth requests to admin router
-	CACertFile string
-
-	IAMConfig string
 }
 
 // Default values for config files
@@ -39,7 +34,7 @@ const (
 	defaultListenNet         = "unix"
 	defaultListenAddr        = "/run/dcos/dcos-ui-update-service.sock"
 	defaultAssetPrefix       = "/static/"
-	defaultUniverseURL       = "https://leader.mesos"
+	defaultUniverseURL       = "http://127.0.0.1:7070"
 	defaultDefaultDocRoot    = "/opt/mesosphere/active/dcos-ui/usr"
 	defaultVersionsRoot      = "./versions"
 	defaultMasterCountFile   = "/opt/mesosphere/etc/master_count"
@@ -47,9 +42,7 @@ const (
 
 const (
 	optAssetPrefix       = "asset-prefix"
-	optCaCert            = "ca-cert"
 	optDefaultDocRoot    = "default-ui-path"
-	optIAMConfig         = "iam-config"
 	optHTTPClientTimeout = "http-client-timeout"
 	optListenNet         = "listen-net"
 	optListenAddress     = "listen-addr"
@@ -70,8 +63,6 @@ func NewDefaultConfig() *Config {
 		defaultDefaultDocRoot,
 		defaultVersionsRoot,
 		defaultMasterCountFile,
-		"",
-		"",
 	}
 }
 
@@ -104,8 +95,6 @@ func Parse(args []string) *Config {
 	cliArgs.StringVar(&cfg.DefaultDocRoot, optDefaultDocRoot, cfg.DefaultDocRoot, "The filesystem path to serve the default UI from (pre-bundled).")
 	cliArgs.StringVar(&cfg.VersionsRoot, optVersionsRoot, cfg.VersionsRoot, "The filesystem path where downloaded versions are stored.")
 	cliArgs.StringVar(&cfg.MasterCountFile, optMasterCountFile, cfg.MasterCountFile, "The filesystem path to the file determining the master count.")
-	cliArgs.StringVar(&cfg.CACertFile, optCaCert, cfg.CACertFile, "The filesystem path to the certificate authority file.")
-	cliArgs.StringVar(&cfg.IAMConfig, optIAMConfig, cfg.IAMConfig, "The filesystem path to identity and access management config.")
 	cliArgs.DurationVar(&cfg.HTTPClientTimeout, optHTTPClientTimeout, cfg.HTTPClientTimeout, "The default http client timeout for requests.")
 	cliArgs.Parse(args)
 

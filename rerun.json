@@ -4,6 +4,6 @@
         "-listen-addr", "0.0.0.0:5000", 
         "-master-count-file", "./fixtures/single-master",
         "-default-ui-path", "./public",
-        "-universe-url", "$CLUSTER_URL"
+        "-universe-url", "http://cosmos:7070"
     ]
 }

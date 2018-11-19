@@ -1,0 +1,21 @@
+version: '3'
+services:
+  dcos-ui:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - 5000:5000
+    volumes:
+      - .:/src
+    command: ["rerun", "-v", "--config=rerun.json"]
+  cosmos:
+    build:
+      context: ./testdata/localCosmos
+      dockerfile: Dockerfile
+    ports:
+      - 7070:7070
+    environment:
+      - CLUSTER_URL
+      - AUTH_TOKEN
+    command: ["npm", "start"]

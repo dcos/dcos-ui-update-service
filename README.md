@@ -15,14 +15,15 @@ You can use this command to start an interactive docker shell with everything yo
 
 `docker build -t dev -f Dockerfile.dev . && docker run -v $(pwd):/src -it dev /bin/bash`
 
-You can run the service inside docker by exporting `$CLUSTER_URL` and running `make start`
+You can run the service inside docker by exporting `$CLUSTER_URL`, `$AUTH_TOKEN` and running `make start`
 
 ```bash
 $ export CLUSTER_URL=<path_to_a_cluster>
+$ export AUTH_TOKEN=<token>
 $ make start
 ```
 
-This will run the service inside docker with [rerun](https://github.com/ivpusic/rerun) that watches for changes and restarts the app when files are saved. By default running in docker will start the service on port 5000 of your local machine. The rerun arguments can be found in `rerun.json`.
+This will run the service inside docker with [rerun](https://github.com/ivpusic/rerun) that watches for changes and restarts the app when files are saved. By default running in docker will start the service on port 5000 of your local machine. The rerun arguments can be found in `rerun.json`. It also runs a small proxy server for making calls to cosmos.
 
 ## Production Deployment
 
