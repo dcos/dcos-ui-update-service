@@ -105,7 +105,7 @@ func TestClientLoadVersion(t *testing.T) {
 			Fs:     fs,
 		}
 
-		err := loader.LoadVersion("2.25.0", "/")
+		err := loader.loadVersion("2.25.0", "/")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -131,7 +131,7 @@ func TestClientLoadVersion(t *testing.T) {
 			Fs:     fs,
 		}
 
-		err := loader.LoadVersion("3.25.0", "/")
+		err := loader.loadVersion("3.25.0", "/")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -157,7 +157,7 @@ func TestClientLoadVersion(t *testing.T) {
 			Fs:     fs,
 		}
 
-		err := loader.LoadVersion("2.25.0", "/ponies")
+		err := loader.loadVersion("2.25.0", "/ponies")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -183,7 +183,7 @@ func TestClientLoadVersion(t *testing.T) {
 			Fs:     fs,
 		}
 
-		err := loader.LoadVersion("2.25.2", "/")
+		err := loader.loadVersion("2.25.2", "/")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")
@@ -209,7 +209,7 @@ func TestClientLoadVersion(t *testing.T) {
 			Fs:     fs,
 		}
 
-		err := loader.LoadVersion("2.25.1", "/")
+		err := loader.loadVersion("2.25.1", "/")
 
 		if err == nil {
 			t.Fatalf("Expected error, got nil")

@@ -25,6 +25,13 @@ type Client struct {
 	sync.Mutex
 }
 
+type UpdateManager interface {
+	UpdateToVersion(string, func(string) error) error
+	ResetVersion() error
+	CurrentVersion() (string, error)
+	PathToCurrentVersion() (string, error)
+}
+
 // NewClient creates a new instance of Client
 func NewClient(cfg *config.Config) (*Client, error) {
 	universeURL, err := url.Parse(cfg.UniverseURL)
@@ -43,7 +50,7 @@ func NewClient(cfg *config.Config) (*Client, error) {
 }
 
 // LoadVersion downloads the given DC/OS UI version to the target directory.
-func (um *Client) LoadVersion(version string, targetDirectory string) error {
+func (um *Client) loadVersion(version string, targetDirectory string) error {
 	listVersionResp, listErr := um.Cosmos.ListPackageVersions("dcos-ui")
 	if listErr != nil {
 		return fmt.Errorf("Could not reach the server: %#v", listErr)
@@ -170,7 +177,7 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 	logrus.WithFields(logrus.Fields{"directory": targetDir}).Info("Created directory for next version")
 
 	// Update to next version
-	err = um.LoadVersion(version, targetDir)
+	err = um.loadVersion(version, targetDir)
 	if err != nil {
 		// Install failed delete the targetDir
 		um.Fs.RemoveAll(targetDir)

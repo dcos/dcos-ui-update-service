@@ -7,11 +7,17 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/afero"
 )
+
+func makeFileHandler() *UIFileHandler {
+	return NewUIFileHandler("/static/", "../public", afero.NewOsFs())
+}
 
 func TestUIFileHandler(t *testing.T) {
 	t.Run("serves static files", func(t *testing.T) {
-		handler := NewUIFileHandler("/static/", "../public")
+		handler := makeFileHandler()
 
 		req, err := http.NewRequest("GET", "/static/", nil)
 		if err != nil {
@@ -34,7 +40,7 @@ func TestUIFileHandler(t *testing.T) {
 	})
 
 	t.Run("Can change documentRoot at runtime", func(t *testing.T) {
-		handler := NewUIFileHandler("/static/", "../public")
+		handler := makeFileHandler()
 
 		req1, err := http.NewRequest("GET", "/static/test.html", nil)
 		if err != nil {
@@ -82,7 +88,7 @@ func TestUIFileHandler(t *testing.T) {
 	})
 
 	t.Run("Can change documentRoot at runtime", func(t *testing.T) {
-		handler := NewUIFileHandler("/static/", "../public")
+		handler := makeFileHandler()
 		err := handler.UpdateDocumentRoot("./does-not-exist")
 		if !os.IsNotExist(err) {
 			t.Errorf("expected UpdateDocumentRoot to return NotExist err, instead got %v", err)
@@ -91,7 +97,7 @@ func TestUIFileHandler(t *testing.T) {
 
 	t.Run("GetAssetPrefix returns expected value", func(t *testing.T) {
 		expAssetPrefix := "/static/"
-		handler := NewUIFileHandler("/static/", "../public")
+		handler := makeFileHandler()
 		assetPrefix := handler.AssetPrefix()
 		if assetPrefix != expAssetPrefix {
 			t.Errorf("GetAssetPrefix returned %v, but expected %v", assetPrefix, expAssetPrefix)
@@ -100,7 +106,7 @@ func TestUIFileHandler(t *testing.T) {
 
 	t.Run("GetDocumentRoot returns expected value", func(t *testing.T) {
 		expDocRoot := "../public"
-		handler := NewUIFileHandler("/static/", "../public")
+		handler := makeFileHandler()
 		docRoot := handler.DocumentRoot()
 		if docRoot != expDocRoot {
 			t.Errorf("GetDocumentRoot returned %v, but expected %v", docRoot, expDocRoot)
@@ -110,7 +116,7 @@ func TestUIFileHandler(t *testing.T) {
 	t.Run("GetDocumentRoot returns expected value after update", func(t *testing.T) {
 		expDocRoot1 := "../public"
 		expDocRoot2 := "../testdata/docroot/public"
-		handler := NewUIFileHandler("/static/", "../public")
+		handler := makeFileHandler()
 		docRoot := handler.DocumentRoot()
 		if docRoot != expDocRoot1 {
 			t.Errorf("GetDocumentRoot returned %v, but expected %v", docRoot, expDocRoot1)
