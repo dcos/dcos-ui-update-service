@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 )
 
 type UIService struct {
@@ -23,7 +24,7 @@ type UIService struct {
 
 	UIHandler *fileHandler.UIFileHandler
 
-	UpdateManager *updateManager.Client
+	UpdateManager updateManager.UpdateManager
 
 	MasterCounter dcos.MasterCounter
 
@@ -32,13 +33,13 @@ type UIService struct {
 
 // SetupUIHandler create UIFileHandler for service ui and set default directory to
 // the current downloaded version or the default document root
-func SetupUIHandler(cfg *config.Config, um *updateManager.Client) *fileHandler.UIFileHandler {
+func SetupUIHandler(cfg *config.Config, um updateManager.UpdateManager) *fileHandler.UIFileHandler {
 	documentRoot := cfg.DefaultDocRoot
 	currentVersionPath, err := um.PathToCurrentVersion()
 	if err == nil {
 		documentRoot = currentVersionPath
 	}
-	return fileHandler.NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot)
+	return fileHandler.NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot, afero.NewOsFs())
 }
 
 func setup(args []string) (*UIService, error) {
