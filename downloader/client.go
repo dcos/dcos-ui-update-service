@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 )
 
@@ -40,6 +41,7 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 
 		// if no more files are found return
 		case err == io.EOF:
+			logrus.Info("Extract tar.gz to directory: No more files found")
 			return nil
 
 		// return any other error
@@ -49,6 +51,7 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 		// if the header is nil, just skip it (not sure how this
 		// happens)
 		case header == nil:
+			logrus.Info("Extract tar.gz to directory: Header is nil, skip")
 			continue
 		}
 
@@ -59,6 +62,7 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 
 		// if its a dir and it doesn't exist create it
 		case tar.TypeDir:
+			logrus.Info("Extract tar.gz to directory: Creating directory")
 			if _, err := d.Fs.Stat(target); err != nil {
 				if err := d.Fs.MkdirAll(target, 0755); err != nil {
 					return errors.Wrap(err, fmt.Sprintf("error making directory %s", target))
@@ -67,6 +71,7 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 
 		// if it's a file create it
 		case tar.TypeReg:
+			logrus.Info("Extract tar.gz to directory: Creating file")
 			f, err := d.Fs.OpenFile(target, os.O_CREATE|os.O_RDWR, 0755)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("error opening file for writing %s", target))
@@ -91,6 +96,7 @@ func (d *Client) DownloadAndUnpack(fileURL *url.URL, targetDirectory string) err
 	if err != nil {
 		return err
 	}
+	logrus.WithFields(logrus.Fields{"statusCode": resp.StatusCode}).Info("Download and unpack: response received")
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download package %v", resp.StatusCode)
 	}
@@ -103,6 +109,7 @@ func (d *Client) DownloadAndUnpack(fileURL *url.URL, targetDirectory string) err
 	if err != nil {
 		return err
 	}
+	logrus.Info("Download and unpack successful")
 
 	return nil
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type UIService struct {
@@ -40,6 +40,13 @@ func SetupUIHandler(cfg *config.Config, um *updateManager.Client) *fileHandler.U
 func setup(args []string) (*UIService, error) {
 	cfg := config.Parse(args)
 
+	// Set logging level
+	lvl, err := logrus.ParseLevel(cfg.LogLevel)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	logrus.SetLevel(lvl)
+
 	updateManager, err := updateManager.NewClient(cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create update manager")
@@ -47,6 +54,13 @@ func setup(args []string) (*UIService, error) {
 	uiHandler := SetupUIHandler(cfg, updateManager)
 	dcos := dcos.DCOS{
 		MasterCountLocation: cfg.MasterCountFile,
+	}
+
+	version, err := updateManager.CurrentVersion()
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"err": err}).Warn("Error retrieving the current package version from update manager")
+	} else {
+		logrus.WithFields(logrus.Fields{"version": version}).Info("Current package version")
 	}
 
 	return &UIService{
@@ -62,44 +76,36 @@ func main() {
 	cliArgs := os.Args[1:]
 	service, err := setup(cliArgs)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initiate ui service, %s", err.Error())
-		os.Exit(1)
+		logrus.WithFields(logrus.Fields{"err": err.Error()}).Fatal("Failed to initiate ui service")
 	}
-
 	// Use systemd socket activation.
 	l, err := activation.Listeners()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to activate listeners from systemd, %s", err.Error())
-		os.Exit(1)
+		logrus.WithFields(logrus.Fields{"err": err.Error()}).Fatal("Failed to activate listeners from systemd")
 	}
 
 	var listener net.Listener
 	switch numListeners := len(l); numListeners {
 	case 0:
-		fmt.Println("Did not receive any listeners from systemd, will start with configured listener instead.")
+		logrus.Info("Did not receive any listeners from systemd, will start with configured listener instead.")
 		listener, err = net.Listen(service.Config.ListenNetProtocol, service.Config.ListenNetAddress)
 		if err != nil {
-			fmt.Fprintf(
-				os.Stderr,
-				"Cannot listen for %q connections at address %q: %s \n",
-				service.Config.ListenNetProtocol,
-				service.Config.ListenNetAddress,
-				err.Error(),
-			)
-			os.Exit(1)
+			logrus.WithFields(logrus.Fields{
+				"connections": service.Config.ListenNetProtocol,
+				"address":     service.Config.ListenNetAddress,
+				"err":         err.Error(),
+			}).Fatal("Cannot listen for connections")
 		}
-		fmt.Fprintf(os.Stderr, "Listening using net: %q and Addr: %q\n", service.Config.ListenNetProtocol, service.Config.ListenNetAddress)
+		logrus.WithFields(logrus.Fields{"net": service.Config.ListenNetProtocol, "Addr": service.Config.ListenNetAddress}).Info("Listening")
 	case 1:
 		listener = l[0]
-		fmt.Fprintf(os.Stderr, "Listening on systemd socket %s\n", listener.Addr())
+		logrus.WithFields(logrus.Fields{"socket": listener.Addr()}).Info("Listening on systemd")
 	default:
-		fmt.Fprintf(os.Stderr, "found multiple systemd sockets\n")
-		os.Exit(1)
+		logrus.Fatal("Found multiple systemd sockets.")
 	}
 
 	if err := Run(service, listener); err != nil {
-		fmt.Fprintf(os.Stderr, "Application error: %s", err.Error())
-		os.Exit(1)
+		logrus.WithFields(logrus.Fields{"err": err.Error()}).Fatal("Application error")
 	}
 }
 
@@ -132,7 +138,7 @@ func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {
 func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
 	isMultiMaster, err := service.MasterCounter.IsMultiMaster()
 	if err != nil {
-		fmt.Printf("Error checking for multi master setup: %#v", err)
+		logrus.WithFields(logrus.Fields{"err": err}).Error("Error checking for multi master setup")
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -156,7 +162,10 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 		err := service.UpdateManager.UpdateToVersion(version, service.UIHandler)
 
 		if err != nil {
-			fmt.Printf("Update to version %s failed: %#v", version, err)
+			logrus.WithFields(logrus.Fields{
+				"version": version,
+				"err":     err,
+			}).Error("Update failed")
 			// This returns locked on every error, it would be better if we would return a boolean if the process is locked
 			w.WriteHeader(http.StatusLocked)
 			return
@@ -176,13 +185,13 @@ func ResetToDefaultUIHandler(state *UIService) func(http.ResponseWriter, *http.R
 		}
 		err := state.UIHandler.UpdateDocumentRoot(state.Config.DefaultDocRoot)
 		if err != nil {
-			fmt.Printf("Failed to reset to default document root. %#v", err)
+			logrus.WithFields(logrus.Fields{"err": err}).Error("Failed to reset to default document root")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		err = state.UpdateManager.ResetVersion()
 		if err != nil {
-			fmt.Printf("Failed to removed current version when reseting to default document root. %#v", err)
+			logrus.WithFields(logrus.Fields{"err": err}).Error("Failed to remove current version when resetting to default document root")
 		}
 		w.WriteHeader(http.StatusOK)
 	}

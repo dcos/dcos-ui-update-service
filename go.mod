@@ -4,7 +4,6 @@ require (
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc // indirect
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/coreos/go-systemd v0.0.0-20181012123002-c6f51f82210d
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dcos/dcos-go v0.0.0-20181019125502-5f6f91b575d8
 	github.com/derekparker/delve v1.1.0
 	github.com/google/go-cmp v0.2.0
@@ -14,8 +13,8 @@ require (
 	github.com/ivpusic/golog v0.0.0-20170608213328-28640bee649f // indirect
 	github.com/ivpusic/rerun v0.0.0-20170331080801-adc8acf1481b // indirect
 	github.com/pkg/errors v0.8.0
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644 // indirect
+	github.com/sirupsen/logrus v1.2.0
 	github.com/spf13/afero v1.1.2
 	github.com/stretchr/testify v1.2.2
 	github.com/tidwall/gjson v1.1.3
