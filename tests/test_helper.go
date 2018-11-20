@@ -89,3 +89,11 @@ func (h Helper) BoolEql(got, want bool) {
 		h.t.Fatalf("boolean equality assertion failed, got %t wanted %t", got, want)
 	}
 }
+
+func (h Helper) StringContains(got, want string) {
+	h.t.Helper()
+
+	if !strings.Contains(got, want) {
+		h.t.Fatalf("wanted %v to contain %v", got, want)
+	}
+}

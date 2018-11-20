@@ -18,4 +18,9 @@ services:
     environment:
       - CLUSTER_URL
       - AUTH_TOKEN
-    command: ["npm", "start"]
+    command: ["npm", "start"]    
+  zookeeper:
+    image: jplock/zookeeper:3.4.13
+    ports:
+      - "2181:2181"
+

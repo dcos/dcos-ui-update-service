@@ -115,4 +115,88 @@ func TestConfig(t *testing.T) {
 
 		tests.H(t).StringEql(cfg.LogLevel, "error")
 	})
+
+	t.Run("default ZKAddress is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).StringEql(cfg.ZKAddress, defaultZKAddress)
+	})
+
+	t.Run("sets ZKAddress from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optZKAddress, "0.0.0.0:2181"})
+
+		tests.H(t).StringEql(cfg.ZKAddress, "0.0.0.0:2181")
+	})
+
+	t.Run("default ZKBasePath is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).StringEql(cfg.ZKBasePath, defaultZKBasePath)
+	})
+
+	t.Run("sets ZKBasePath from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optZKBasePath, "0.0.0.0:2181"})
+
+		tests.H(t).StringEql(cfg.ZKBasePath, "0.0.0.0:2181")
+	})
+
+	t.Run("default ZKAuthInfo is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).StringEql(cfg.ZKAuthInfo, defaultZKAuthInfo)
+	})
+
+	t.Run("sets ZKAuthInfo from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optZKAuthInfo, "test-thing"})
+
+		tests.H(t).StringEql(cfg.ZKAuthInfo, "test-thing")
+	})
+
+	t.Run("default ZKZnodeOwner is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).StringEql(cfg.ZKZnodeOwner, defaultZKZnodeOwner)
+	})
+
+	t.Run("sets ZKZnodeOwner from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optZKZnodeOwner, "testOwner"})
+
+		tests.H(t).StringEql(cfg.ZKZnodeOwner, "testOwner")
+	})
+
+	t.Run("default ZKSessionTimeout is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).Int64Eql(cfg.ZKSessionTimeout.Nanoseconds(), defaultZKSessionTimeout.Nanoseconds())
+	})
+
+	t.Run("sets ZKSessionTimeout from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optZKSessionTimeout, "20s"})
+
+		tests.H(t).Int64Eql(cfg.ZKSessionTimeout.Nanoseconds(), (20 * time.Second).Nanoseconds())
+	})
+
+	t.Run("default ZKConnectionTimeout is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).Int64Eql(cfg.ZKConnectionTimeout.Nanoseconds(), defaultZKConnectTimeout.Nanoseconds())
+	})
+
+	t.Run("sets ZKConnectionTimeout from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optZKConnectTimeout, "20s"})
+
+		tests.H(t).Int64Eql(cfg.ZKConnectionTimeout.Nanoseconds(), (20 * time.Second).Nanoseconds())
+	})
+
+	t.Run("default ZKPollingInterval is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).Int64Eql(cfg.ZKPollingInterval.Nanoseconds(), defaultZKPollingInterval.Nanoseconds())
+	})
+
+	t.Run("sets ZKPollingInterval from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optZKPollingInterval, "20s"})
+
+		tests.H(t).Int64Eql(cfg.ZKPollingInterval.Nanoseconds(), (20 * time.Second).Nanoseconds())
+	})
 }
