@@ -184,7 +184,7 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 		logrus.Error("Update to new version failed, deleted target directory")
 		return errors.Wrap(err, "Could not load new version")
 	}
-	err = updateCompleteCallback(targetDir)
+	err = updateCompleteCallback(path.Join(targetDir, "dist"))
 	if err != nil {
 		// Swap to new version failed, abort update
 		um.Fs.RemoveAll(targetDir)
