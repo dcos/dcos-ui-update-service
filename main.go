@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -67,7 +66,7 @@ func setup(args []string) (*UIService, error) {
 	} else {
 		logrus.WithFields(logrus.Fields{"version": version}).Info("Current package version")
 	}
-	
+
 	versionStore := uiService.NewZKVersionStore(cfg)
 
 	service := &UIService{
@@ -194,19 +193,19 @@ func ResetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http
 		}
 		err := service.UIHandler.UpdateDocumentRoot(service.Config.DefaultDocRoot)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{"err": err}).Error("Failed to reset to default document root")
+			logrus.WithError(err).Error("Failed to reset to default document root")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		storeErr := service.versionStore.UpdateCurrentVersion(uiService.PreBundledUIVersion)
 		if storeErr != nil {
-			fmt.Printf("Failed to update the version store the the PreBundledUIVersion. %#v", storeErr)
+			logrus.WithError(storeErr).Error("Failed to update the version store to the PreBundledUIVersion.")
 		}
 
 		err = service.UpdateManager.ResetVersion()
 		if err != nil {
-			logrus.WithFields(logrus.Fields{"err": err}).Error("Failed to remove current version when resetting to default document root")
+			logrus.WithError(err).Error("Failed to remove current version when resetting to default document root")
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -220,33 +219,33 @@ func registerForVersionChanges(service *UIService) {
 }
 
 func handleVersionChange(service *UIService, newVersion string) {
-	fmt.Printf("received version '%v' from version store.\n", newVersion) //TODO: Info
+	logrus.WithFields(logrus.Fields{"version": newVersion}).Info("Received version change from version store.")
 	currentLocalVersion, err := service.UpdateManager.CurrentVersion()
 	if err != nil {
-		fmt.Printf("Failed to handle version change, error getting the current local version. Error: %v\n", err.Error())
+		logrus.WithError(err).Error("Failed to handle version change, error getting the current local version.")
 		return
 	}
 	if currentLocalVersion != newVersion {
-		fmt.Printf(
-			"new version '%v' doesn't match current version '%v'. Initiating a version sync.\n",
-			newVersion,
-			currentLocalVersion) //TODO: Info
+		logrus.WithFields(logrus.Fields{
+			"newVersion":     newVersion,
+			"currentVersion": currentLocalVersion,
+		}).Info("Initiating a version sync.")
 
 		if newVersion == "" {
 			// Reset to Pre-bundled version
 			err := service.UIHandler.UpdateDocumentRoot(service.Config.DefaultDocRoot)
 			if err != nil {
-				fmt.Printf("Failed to reset to default document root. %#v", err)
+				logrus.WithError(err).Error("Failed to reset to default document root.")
 				return
 			}
 
 			err = service.UpdateManager.ResetVersion()
 			if err != nil {
-				fmt.Printf("Failed to removed current version when reseting to default document root. %#v", err)
+				logrus.WithError(err).Error("Failed to removed current version when reseting to default document root.")
 				return
 			}
 
-			fmt.Printf("Successfully reset to default document root from on version sync.")
+			logrus.Info("Successfully reset to default document root from on version sync.")
 			return
 		}
 
@@ -259,10 +258,10 @@ func handleVersionChange(service *UIService, newVersion string) {
 		})
 
 		if err != nil {
-			fmt.Printf("Version sync to version '%s' failed: %#v\n", newVersion, err)
+			logrus.WithError(err).WithFields(logrus.Fields{"newVersion": newVersion}).Error("Version sync failed")
 			return
 		}
 
-		fmt.Printf("Version sync to version '%s' completed successfully\n", newVersion)
+		logrus.WithFields(logrus.Fields{"newVersion": newVersion}).Info("Version sync completed successfully")
 	}
 }

@@ -1,7 +1,6 @@
 package zookeeper
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/pkg/errors"
 	"github.com/samuel/go-zookeeper/zk"
+	"github.com/sirupsen/logrus"
 )
 
 type StateListener func(state ClientState)
@@ -62,6 +62,7 @@ var (
 	defaultZnodeOwner              = &schemaOwner{schema: "world", owner: "anyone"}
 	zkNoFlags                      = int32(0)
 	zkNoVersion                    = int32(-1)
+	log                            = logrus.WithField("package", "zookeeper.client")
 )
 
 // exported functions
@@ -150,7 +151,8 @@ func connect(config zkConfig) (*Client, error) {
 	}
 	client.conn, _, err = zk.Connect([]string{config.Address},
 		config.SessionTimeout,
-		zk.WithEventCallback(client.eventCallback(sessionEstablished)))
+		zk.WithEventCallback(client.eventCallback(sessionEstablished)),
+		zk.WithLogger(zookeeperClientLogger()))
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not connect to ZK at '%s'", config.Address)
 	}
@@ -163,7 +165,7 @@ func connect(config zkConfig) (*Client, error) {
 		// wait for the session to be established
 		select {
 		case <-sessionEstablished:
-			fmt.Println("Initial ZK session established")
+			log.Debug("Initial ZK session established")
 		case <-time.After(config.ConnectTimeout):
 			return errCouldNotEstablishConnection
 		}
@@ -175,7 +177,7 @@ func connect(config zkConfig) (*Client, error) {
 	}()
 
 	if err != nil {
-		fmt.Printf("Shutting down ZK connection due to failure to initialize\n")
+		log.Debug("Shutting down ZK connection due to failure to initialize")
 		client.conn.Close()
 		return nil, err
 	}
@@ -231,11 +233,9 @@ func (c *Client) eventCallback(sessionEstablished chan struct{}) zk.EventCallbac
 			listener(c.clientState)
 		}
 		if e.Err != nil {
-			fmt.Printf("ZK %s %s %s %s: %s\n",
-				e.Type, e.State, e.Path, e.Server, e.Err)
+			log.WithError(e.Err).Tracef("ZK event: %s %s %s %s", e.Type, e.State, e.Path, e.Server)
 		} else {
-			fmt.Printf("ZK %s %s %s %s\n",
-				e.Type, e.State, e.Path, e.Server)
+			log.Tracef("ZK event: %s %s %s %s", e.Type, e.State, e.Path, e.Server)
 		}
 	}
 }
