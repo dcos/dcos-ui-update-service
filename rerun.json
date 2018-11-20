@@ -1,5 +1,6 @@
 {
     "args": [
+        "-log-level", "trace",
         "-listen-net", "tcp",
         "-listen-addr", "0.0.0.0:5000", 
         "-master-count-file", "./fixtures/single-master",

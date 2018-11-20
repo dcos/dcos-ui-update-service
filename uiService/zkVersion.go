@@ -11,6 +11,7 @@ import (
 	"github.com/jpillora/backoff"
 	"github.com/pkg/errors"
 	"github.com/samuel/go-zookeeper/zk"
+	"github.com/sirupsen/logrus"
 )
 
 type zkVersionStore struct {
@@ -45,6 +46,8 @@ type versionChangeListeners struct {
 
 var (
 	ErrZookeeperNotConnected = errors.New("Zookeeper is not currently connected")
+
+	log = logrus.WithFields(logrus.Fields{"package": "ZKVersionStore"})
 )
 
 // NewZKVersionStore creates a new zookeeper version store from the config.
@@ -114,18 +117,19 @@ func (zks *zkVersionStore) connectAndInitZKAsync(cfg *config.Config) {
 		zkClient, err := zookeeper.Connect(cfg)
 		if err != nil {
 			backoffDuration := b.Duration()
-			fmt.Printf(
-				"ZKVersionStore: Failed to connect to ZK on attempt %v. Error: %v. Will retry again in %s\n",
-				connectionAttempt,
-				err.Error(),
-				backoffDuration) //TODO: Warning
+			log.WithError(err).WithFields(logrus.Fields{
+				"connectionAttempt": connectionAttempt,
+				"backOffDuration":   backoffDuration,
+			}).Warning("Failed to connect to ZK")
 			<-time.After(backoffDuration)
 		} else {
 			zks.initZKVersionStore(zkClient)
 			if connectionAttempt > 1 {
-				fmt.Printf("ZKVersionStore: Successfully connected to ZK after %v failed attempts\n", connectionAttempt) //TODO: Info
+				log.WithFields(logrus.Fields{
+					"connectionAttempt": connectionAttempt,
+				}).Info("Successfully connected to ZK after previous failures")
 			} else {
-				fmt.Println("ZKVersionStore: Successfully connected to ZK") //TODO: Info
+				log.Info("Successfully connected to ZK")
 			}
 			return
 		}
@@ -149,7 +153,7 @@ func (zks *zkVersionStore) handleZKStateChange(state zookeeper.ClientState) {
 	}
 	oldState := zks.zkClientState
 	zks.zkClientState = state
-	fmt.Printf("ZKVersionStore: ZK connection state changed to %v\n", state) // TODO: Info
+	log.WithFields(logrus.Fields{"state": state}).Info("ZK connection state changed")
 
 	if oldState == zookeeper.Disconnected {
 		zks.initCurrentVersion()
@@ -174,7 +178,7 @@ func (zks *zkVersionStore) updateLocalCurrentVersion(version UIVersion) {
 	}
 
 	go zks.broadcastVersionChange()
-	fmt.Printf("ZKVersionStore: Current UI version cached from ZK: %v\n", version) //TODO: Trace | Debug
+	log.WithFields(logrus.Fields{"version": version}).Debug("Current UI version cached from ZK")
 }
 
 func (zks *zkVersionStore) getVersionFromZK() (UIVersion, error) {
@@ -188,7 +192,7 @@ func (zks *zkVersionStore) getVersionFromZK() (UIVersion, error) {
 func (zks *zkVersionStore) initCurrentVersion() {
 	var version UIVersion
 
-	fmt.Println("ZKVersionStore: Getting current ui version from ZK") // TODO: Debug
+	log.Debug("Getting current ui version from ZK")
 	found, err := zks.client.Exists(zks.versionPath)
 	if err != nil {
 		panic(fmt.Sprintf("Error making exists check in zookeeper for ui version node @ '%v'. Error: %v", zks.versionPath, err.Error()))
@@ -231,7 +235,7 @@ func (zks *zkVersionStore) broadcastVersionChange() {
 
 func (zks *zkVersionStore) startVersionWatch() {
 	if zks.watchState.active {
-		fmt.Println("ZKVersionStore: Tried to start version watch while old watch was active") //TODO: Warning
+		log.Warning("Tried to start version watch while old watch was active")
 		return
 	}
 
@@ -240,13 +244,13 @@ func (zks *zkVersionStore) startVersionWatch() {
 	zks.watchState.active = true
 	zks.watchState.disconnected = make(chan struct{})
 
-	fmt.Println("ZKVersionStore: Version watch started") // TODO: Info | Debug
+	log.Debug("Version watch started")
 	go zks.pollForVersionChanges()
 }
 
 func (zks *zkVersionStore) stopVersionWatch() {
 	if !zks.watchState.active {
-		fmt.Print("ZKVersionStore: Tried to stop version watch with no watch active\n") // TODO: Warning
+		log.Warning("Tried to stop version watch with no watch active")
 		return
 	}
 	zks.watchState.Lock()
@@ -254,7 +258,7 @@ func (zks *zkVersionStore) stopVersionWatch() {
 	zks.watchState.active = false
 	zks.watchState.disconnected = nil
 
-	fmt.Print("ZKVersionStore: Version watch stopped\n") // TODO: Info | Debug
+	log.Debug("Version watch stopped")
 }
 
 func (zks *zkVersionStore) pollForVersionChanges() {
@@ -271,9 +275,9 @@ func (zks *zkVersionStore) pollForVersionChanges() {
 					zks.updateLocalCurrentVersion(version)
 				}
 			case zk.ErrNoNode:
-				fmt.Printf("ZKVersionStore: version node not found in ZK (was deleted)\n") // TODO: Error | Fatal?
+				log.Error("Version node not found in ZK (was deleted?)")
 			default:
-				fmt.Printf("ZKVersionStore: version poll get from zk failed. Error: %v\n", err.Error()) // TODO: Warning | Error
+				log.WithError(err).Error("Version poll get from zk failed.")
 			}
 		}
 	}
