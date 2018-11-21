@@ -1,12 +1,10 @@
-FROM node:10
-
-WORKDIR /usr/src/app
-
-COPY index.js ./
-COPY package.json ./
-
-RUN npm install
+FROM node:10-alpine
 
 EXPOSE 7070
 
-CMD ["npm", "start"]
+ADD package.json /tmp/package.json
+RUN cd /tmp && npm install --quiet
+RUN mkdir -p /opt/app && cp -a /tmp/node_modules /opt/app/
+
+WORKDIR /opt/app
+COPY . .
