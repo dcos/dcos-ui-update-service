@@ -3,12 +3,15 @@ package fileHandler
 import (
 	"net/http"
 	"os"
+
+	"github.com/spf13/afero"
 )
 
 type UIFileHandler struct {
 	assetPrefix  string
 	documentRoot string
 	fileHandler  http.Handler
+	fs           afero.Fs
 }
 
 type UIFileServer interface {
@@ -21,13 +24,14 @@ func createFileHandler(assetPrefix, documentRoot string) http.Handler {
 }
 
 // NewUIFileHandler create a new ui file handler that serves file for the given prefix and from the documentRoot
-func NewUIFileHandler(assetPrefix, documentRoot string) *UIFileHandler {
+func NewUIFileHandler(assetPrefix, documentRoot string, fs afero.Fs) *UIFileHandler {
 	fileHandler := createFileHandler(assetPrefix, documentRoot)
 
 	return &UIFileHandler{
 		assetPrefix,
 		documentRoot,
 		fileHandler,
+		fs,
 	}
 }
 
@@ -43,7 +47,7 @@ func (ufh *UIFileHandler) UpdateDocumentRoot(documentRoot string) error {
 		return nil
 	}
 	// Check that new documentRoot exists before proceeding
-	if _, err := os.Stat(documentRoot); os.IsNotExist(err) {
+	if _, err := ufh.fs.Stat(documentRoot); os.IsNotExist(err) {
 		return err
 	}
 

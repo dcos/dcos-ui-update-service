@@ -5,11 +5,11 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"sync"
 
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/cosmos"
 	"github.com/dcos/dcos-ui-update-service/downloader"
-	"github.com/dcos/dcos-ui-update-service/fileHandler"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -22,6 +22,14 @@ type Client struct {
 	UniverseURL *url.URL
 	VersionPath string
 	Fs          afero.Fs
+	sync.Mutex
+}
+
+type UpdateManager interface {
+	UpdateToVersion(string, func(string) error) error
+	ResetVersion() error
+	CurrentVersion() (string, error)
+	PathToCurrentVersion() (string, error)
 }
 
 // NewClient creates a new instance of Client
@@ -42,7 +50,7 @@ func NewClient(cfg *config.Config) (*Client, error) {
 }
 
 // LoadVersion downloads the given DC/OS UI version to the target directory.
-func (um *Client) LoadVersion(version string, targetDirectory string) error {
+func (um *Client) loadVersion(version string, targetDirectory string) error {
 	listVersionResp, listErr := um.Cosmos.ListPackageVersions("dcos-ui")
 	if listErr != nil {
 		return fmt.Errorf("Could not reach the server: %#v", listErr)
@@ -89,6 +97,9 @@ func (um *Client) LoadVersion(version string, targetDirectory string) error {
 
 // CurrentVersion retrieves the current version of the package
 func (um *Client) CurrentVersion() (string, error) {
+	um.Lock()
+	defer um.Unlock()
+
 	exists, err := afero.DirExists(um.Fs, um.VersionPath)
 
 	if !exists || err != nil {
@@ -141,7 +152,7 @@ func (um *Client) PathToCurrentVersion() (string, error) {
 }
 
 // UpdateToVersion updates the ui to the given version
-func (um *Client) UpdateToVersion(version string, fileServer fileHandler.UIFileServer) error {
+func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(string) error) error {
 	// Find out which version we currently have
 	currentVersion, err := um.CurrentVersion()
 
@@ -154,6 +165,8 @@ func (um *Client) UpdateToVersion(version string, fileServer fileHandler.UIFileS
 		logrus.Info("Currently on requested version")
 		return nil
 	}
+	um.Lock()
+	defer um.Unlock()
 
 	targetDir := path.Join(um.VersionPath, version)
 	// Create directory for next version
@@ -164,14 +177,14 @@ func (um *Client) UpdateToVersion(version string, fileServer fileHandler.UIFileS
 	logrus.WithFields(logrus.Fields{"directory": targetDir}).Info("Created directory for next version")
 
 	// Update to next version
-	err = um.LoadVersion(version, targetDir)
+	err = um.loadVersion(version, targetDir)
 	if err != nil {
 		// Install failed delete the targetDir
 		um.Fs.RemoveAll(targetDir)
 		logrus.Error("Update to new version failed, deleted target directory")
 		return errors.Wrap(err, "Could not load new version")
 	}
-	err = fileServer.UpdateDocumentRoot(path.Join(targetDir, "dist"))
+	err = updateCompleteCallback(path.Join(targetDir, "dist"))
 	if err != nil {
 		// Swap to new version failed, abort update
 		um.Fs.RemoveAll(targetDir)

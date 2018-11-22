@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 )
 
 type UIService struct {
@@ -22,7 +23,7 @@ type UIService struct {
 
 	UIHandler *fileHandler.UIFileHandler
 
-	UpdateManager *updateManager.Client
+	UpdateManager updateManager.UpdateManager
 
 	MasterCounter dcos.MasterCounter
 
@@ -31,13 +32,13 @@ type UIService struct {
 
 // SetupUIHandler create UIFileHandler for service ui and set default directory to
 // the current downloaded version or the default document root
-func SetupUIHandler(cfg *config.Config, um *updateManager.Client) *fileHandler.UIFileHandler {
+func SetupUIHandler(cfg *config.Config, um updateManager.UpdateManager) *fileHandler.UIFileHandler {
 	documentRoot := cfg.DefaultDocRoot
 	currentVersionPath, err := um.PathToCurrentVersion()
 	if err == nil {
 		documentRoot = currentVersionPath
 	}
-	return fileHandler.NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot)
+	return fileHandler.NewUIFileHandler(cfg.StaticAssetPrefix, documentRoot, afero.NewOsFs())
 }
 
 func setup(args []string) (*UIService, error) {
@@ -66,13 +67,17 @@ func setup(args []string) (*UIService, error) {
 		logrus.WithFields(logrus.Fields{"version": version}).Info("Current package version")
 	}
 
-	return &UIService{
+	versionStore := uiService.NewZKVersionStore(cfg)
+
+	service := &UIService{
 		Config:        cfg,
 		UpdateManager: updateManager,
 		UIHandler:     uiHandler,
 		MasterCounter: dcos,
-		//		versionStore: uiService.NewZKVersionStore(cfg),
-	}, nil
+		versionStore:  versionStore,
+	}
+
+	return service, nil
 }
 
 // TODO: think about client timeouts https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
@@ -108,6 +113,7 @@ func main() {
 		logrus.Fatal("Found multiple systemd sockets.")
 	}
 
+	registerForVersionChanges(service)
 	if err := Run(service, listener); err != nil {
 		logrus.WithFields(logrus.Fields{"err": err.Error()}).Fatal("Application error")
 	}
@@ -140,19 +146,6 @@ func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {
 
 // UpdateHandler processes update requests
 func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
-	isMultiMaster, err := service.MasterCounter.IsMultiMaster()
-	if err != nil {
-		logrus.WithFields(logrus.Fields{"err": err}).Error("Error checking for multi master setup")
-		return func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	// Unsupported multi master setup
-	if isMultiMaster {
-		return NotImplementedHandler
-	}
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		version := vars["version"]
@@ -163,7 +156,18 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 
-		err := service.UpdateManager.UpdateToVersion(version, service.UIHandler)
+		err := service.UpdateManager.UpdateToVersion(version, func(newVersionPath string) error {
+			updateErr := service.UIHandler.UpdateDocumentRoot(newVersionPath)
+			if updateErr != nil {
+				return errors.Wrap(updateErr, "unable to update the document root to the new version")
+			}
+			newUIVersion := uiService.UIVersion(version)
+			updateErr = service.versionStore.UpdateCurrentVersion(newUIVersion)
+			if updateErr != nil {
+				return errors.Wrap(updateErr, "unable to save new version to the version store")
+			}
+			return nil
+		})
 
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
@@ -180,23 +184,84 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 }
 
 // ResetToDefaultUIHandler processes requests to reset to the default ui
-func ResetToDefaultUIHandler(state *UIService) func(http.ResponseWriter, *http.Request) {
+func ResetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// verify we aren't currently serving pre-bundled version
-		if state.Config.DefaultDocRoot == state.UIHandler.DocumentRoot() {
+		if service.Config.DefaultDocRoot == service.UIHandler.DocumentRoot() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		err := state.UIHandler.UpdateDocumentRoot(state.Config.DefaultDocRoot)
+		err := service.UIHandler.UpdateDocumentRoot(service.Config.DefaultDocRoot)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{"err": err}).Error("Failed to reset to default document root")
+			logrus.WithError(err).Error("Failed to reset to default document root")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		err = state.UpdateManager.ResetVersion()
-		if err != nil {
-			logrus.WithFields(logrus.Fields{"err": err}).Error("Failed to remove current version when resetting to default document root")
+
+		storeErr := service.versionStore.UpdateCurrentVersion(uiService.PreBundledUIVersion)
+		if storeErr != nil {
+			logrus.WithError(storeErr).Error("Failed to update the version store to the PreBundledUIVersion.")
 		}
+
+		err = service.UpdateManager.ResetVersion()
+		if err != nil {
+			logrus.WithError(err).Error("Failed to remove current version when resetting to default document root")
+		}
+
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func registerForVersionChanges(service *UIService) {
+	service.versionStore.WatchForVersionChange(func(newVersion uiService.UIVersion) {
+		handleVersionChange(service, string(newVersion))
+	})
+}
+
+func handleVersionChange(service *UIService, newVersion string) {
+	logrus.WithFields(logrus.Fields{"version": newVersion}).Info("Received version change from version store.")
+	currentLocalVersion, err := service.UpdateManager.CurrentVersion()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to handle version change, error getting the current local version.")
+		return
+	}
+	if currentLocalVersion != newVersion {
+		logrus.WithFields(logrus.Fields{
+			"newVersion":     newVersion,
+			"currentVersion": currentLocalVersion,
+		}).Info("Initiating a version sync.")
+
+		if newVersion == "" {
+			// Reset to Pre-bundled version
+			err := service.UIHandler.UpdateDocumentRoot(service.Config.DefaultDocRoot)
+			if err != nil {
+				logrus.WithError(err).Error("Failed to reset to default document root.")
+				return
+			}
+
+			err = service.UpdateManager.ResetVersion()
+			if err != nil {
+				logrus.WithError(err).Error("Failed to removed current version when reseting to default document root.")
+				return
+			}
+
+			logrus.Info("Successfully reset to default document root from on version sync.")
+			return
+		}
+
+		err := service.UpdateManager.UpdateToVersion(newVersion, func(newVersionPath string) error {
+			updateErr := service.UIHandler.UpdateDocumentRoot(newVersionPath)
+			if updateErr != nil {
+				return errors.Wrap(updateErr, "unable to update the document root to the new version")
+			}
+			return nil
+		})
+
+		if err != nil {
+			logrus.WithError(err).WithFields(logrus.Fields{"newVersion": newVersion}).Error("Version sync failed")
+			return
+		}
+
+		logrus.WithFields(logrus.Fields{"newVersion": newVersion}).Info("Version sync completed successfully")
 	}
 }

@@ -15,6 +15,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - 7070:7070
+    volumes:
+      - ./testdata/localCosmos:/opt/app
+      - /opt/app/node_modules
     environment:
       - CLUSTER_URL
       - AUTH_TOKEN

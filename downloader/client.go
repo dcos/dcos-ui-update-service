@@ -62,7 +62,7 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 
 		// if its a dir and it doesn't exist create it
 		case tar.TypeDir:
-			logrus.Info("Extract tar.gz to directory: Creating directory")
+			logrus.Infof("Extract tar.gz to directory: Creating directory - %s", target)
 			if _, err := d.Fs.Stat(target); err != nil {
 				if err := d.Fs.MkdirAll(target, 0755); err != nil {
 					return errors.Wrap(err, fmt.Sprintf("error making directory %s", target))
@@ -71,7 +71,7 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 
 		// if it's a file create it
 		case tar.TypeReg:
-			logrus.Info("Extract tar.gz to directory: Creating file")
+			logrus.Infof("Extract tar.gz to directory: Creating file - %s", target)
 			f, err := d.Fs.OpenFile(target, os.O_CREATE|os.O_RDWR, 0755)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("error opening file for writing %s", target))
