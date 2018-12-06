@@ -14,6 +14,7 @@ import (
 
 	"github.com/dcos/dcos-ui-update-service/cosmos"
 	"github.com/dcos/dcos-ui-update-service/downloader"
+	"github.com/dcos/dcos-ui-update-service/tests"
 	"github.com/spf13/afero"
 )
 
@@ -107,13 +108,7 @@ func TestClientLoadVersion(t *testing.T) {
 
 		err := loader.loadVersion("2.25.0", "/")
 
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
-		}
-
-		if !strings.Contains(err.Error(), "Could not reach") {
-			t.Fatalf("Error message should hint that the server is not reachable. Instead got error message %q", err.Error())
-		}
+		tests.H(t).ErrEql(err, ErrCosmosRequestFailure)
 	})
 
 	t.Run("throws an error if the requested version is not available", func(t *testing.T) {
@@ -133,39 +128,7 @@ func TestClientLoadVersion(t *testing.T) {
 
 		err := loader.loadVersion("3.25.0", "/")
 
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
-		}
-
-		if !strings.Contains(err.Error(), "version is not available") {
-			t.Fatalf("Error message should hint that the version is absent. Instead got error message %q", err.Error())
-		}
-	})
-
-	t.Run("throws an error if the directory is not present", func(t *testing.T) {
-		server := httptest.NewServer(defaultHandler)
-		// Close the server when test finishes
-		defer server.Close()
-
-		cosmosURL, _ := url.Parse(server.URL)
-		cosmos := cosmos.NewClient(cosmosURL)
-		fs := afero.NewMemMapFs()
-
-		loader := Client{
-			Cosmos: cosmos,
-			Loader: downloader.New(fs),
-			Fs:     fs,
-		}
-
-		err := loader.loadVersion("2.25.0", "/ponies")
-
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
-		}
-
-		if !strings.Contains(err.Error(), "is no directory") {
-			t.Fatalf("Error message should hint that the directory is absent. Instead got error message %q", err.Error())
-		}
+		tests.H(t).ErrEql(err, ErrRequestedVersionNotFound)
 	})
 
 	t.Run("throws error if one of the file named dcos-ui-bundle can not be found in the assets", func(t *testing.T) {
@@ -185,13 +148,7 @@ func TestClientLoadVersion(t *testing.T) {
 
 		err := loader.loadVersion("2.25.2", "/")
 
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
-		}
-
-		if !strings.Contains(err.Error(), "Could not find asset with the name") {
-			t.Fatalf("Error message should hint that it could not load a file. Instead got error message %q", err.Error())
-		}
+		tests.H(t).ErrEql(err, ErrUIPackageAssetNotFound)
 	})
 
 	t.Run("throws error if one of the files could not be downloaded", func(t *testing.T) {
@@ -211,13 +168,7 @@ func TestClientLoadVersion(t *testing.T) {
 
 		err := loader.loadVersion("2.25.1", "/")
 
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
-		}
-
-		if !strings.Contains(err.Error(), "Could not load") {
-			t.Fatalf("Error message should hint that it could not load a file. Instead got error message %q", err.Error())
-		}
+		tests.H(t).ErrEql(err, downloader.ErrDowloadPackageFailed)
 	})
 }
 
@@ -242,9 +193,7 @@ func TestClientCurrentVersion(t *testing.T) {
 
 		_, err := loader.CurrentVersion()
 
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
-		}
+		tests.H(t).ErrEql(err, ErrVersionsPathDoesNotExist)
 	})
 
 	t.Run("returns empty string if VersionPath directory is empty", func(t *testing.T) {
@@ -266,12 +215,8 @@ func TestClientCurrentVersion(t *testing.T) {
 		fs.MkdirAll("/ui-versions", 0755)
 		ver, err := loader.CurrentVersion()
 
-		if err != nil {
-			t.Fatalf("returned error when not expecting it %v", err)
-		}
-		if len(ver) != 0 {
-			t.Errorf("returned non-empty string for version. %v", ver)
-		}
+		tests.H(t).ErrEql(err, nil)
+		tests.H(t).StringEql(ver, "")
 	})
 
 	t.Run("returns name of the only directory in VersionPath", func(t *testing.T) {
@@ -293,13 +238,8 @@ func TestClientCurrentVersion(t *testing.T) {
 		fs.MkdirAll("/ui-versions/2.25.3", 0755)
 		result, err := loader.CurrentVersion()
 
-		if err != nil {
-			t.Fatalf("Expected no error, got %#v", err)
-		}
-
-		if result != "2.25.3" {
-			t.Fatalf("Expected result to be %q, got %q", "2.25.3", result)
-		}
+		tests.H(t).ErrEql(err, nil)
+		tests.H(t).StringEql(result, "2.25.3")
 	})
 
 	t.Run("returns error if there are more than one directory in VersionPath", func(t *testing.T) {
@@ -322,9 +262,7 @@ func TestClientCurrentVersion(t *testing.T) {
 		fs.MkdirAll("/ui-versions/2.25.7", 0755)
 		_, err := loader.CurrentVersion()
 
-		if err == nil {
-			t.Fatalf("Expected an error, got nil")
-		}
+		tests.H(t).ErrEql(err, ErrMultipleVersionFound)
 	})
 }
 
@@ -350,13 +288,8 @@ func TestClientPathToCurrentVersion(t *testing.T) {
 		fs.MkdirAll("/ui-versions/2.25.3", 0755)
 		result, err := loader.PathToCurrentVersion()
 
-		if err != nil {
-			t.Fatalf("Expected no error, got %#v", err)
-		}
-
-		if result != "/ui-versions/2.25.3/dist" {
-			t.Fatalf("Expected result to be %q, got %q", "/ui-versions/2.25.3/dist", result)
-		}
+		tests.H(t).ErrEql(err, nil)
+		tests.H(t).StringEql(result, "/ui-versions/2.25.3/dist")
 	})
 
 	t.Run("throws error if VersionPath directory is empty", func(t *testing.T) {
@@ -442,9 +375,8 @@ func TestClientUpdateToVersion(t *testing.T) {
 		}
 
 		files, err := afero.ReadDir(fs, versionsPath)
-		if err != nil {
-			t.Fatalf("Expected no error, got %#v", err)
-		}
+
+		tests.H(t).ErrEql(err, nil)
 
 		var versionDirs []string
 		for _, file := range files {
@@ -454,9 +386,8 @@ func TestClientUpdateToVersion(t *testing.T) {
 		}
 
 		onlyNewVersionExists := len(versionDirs) == 1
-		if !onlyNewVersionExists {
-			t.Errorf("Expected only new version directory to exist")
-		}
+
+		tests.H(t).BoolEqlWithMessage(onlyNewVersionExists, true, "Expected only new version directory to exist")
 	})
 
 	t.Run("returns error if it can't upgrade", func(t *testing.T) {
@@ -486,9 +417,7 @@ func TestClientUpdateToVersion(t *testing.T) {
 
 		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
-		}
+		tests.H(t).ErrEql(err, ErrCouldNotGetCurrentVersion)
 	})
 
 	t.Run("removes new version dir if update fails", func(t *testing.T) {
@@ -516,17 +445,11 @@ func TestClientUpdateToVersion(t *testing.T) {
 			Fs:          fs,
 		}
 
-		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
+		loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
-		}
+		newVersionExists, _ := afero.DirExists(fs, "/ui-versions/2.25.2")
 
-		newVersionExists, err := afero.DirExists(fs, "/ui-versions/2.25.2")
-
-		if newVersionExists || err != nil {
-			t.Fatalf("Expected new directoy to not exist, got %t, %#v", newVersionExists, err)
-		}
+		tests.H(t).BoolEqlWithMessage(newVersionExists, false, "Expected new directoy to not exist")
 	})
 
 	t.Run("creates update in new directory and returns no error", func(t *testing.T) {
@@ -564,24 +487,16 @@ func TestClientUpdateToVersion(t *testing.T) {
 		fs.MkdirAll("/ui-versions/2.25.1", 0755)
 		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
-		if err != nil {
-			t.Fatalf("Expected no error, got %#v", err)
-		}
+		tests.H(t).ErrEql(err, nil)
 
-		newVersionExists, err := afero.DirExists(fs, versionsPath+"/2.25.2")
+		newVersionExists, _ := afero.DirExists(fs, versionsPath+"/2.25.2")
+		oldVersionExists, _ := afero.DirExists(fs, versionsPath+"/2.25.1")
 
-		if !newVersionExists || err != nil {
-			t.Fatalf("Expected new directoy to exist, got %t, %#v", newVersionExists, err)
-		}
-
-		oldVersionExists, err := afero.DirExists(fs, versionsPath+"/2.25.1")
-
-		if oldVersionExists || err != nil {
-			t.Fatalf("Expected old directoy to be removed, got %t, %#v", oldVersionExists, err)
-		}
+		tests.H(t).BoolEqlWithMessage(newVersionExists, true, "Expected new directoy to exist on failure")
+		tests.H(t).BoolEqlWithMessage(oldVersionExists, false, "Expected old directoy to be removed")
 	})
 
-	t.Run("returns error if you can't update the file server to the current version", func(t *testing.T) {
+	t.Run("return nil if version already exists", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			path := req.URL.Path
 			if path == "/package/list-versions" {
@@ -610,9 +525,7 @@ func TestClientUpdateToVersion(t *testing.T) {
 
 		err := loader.UpdateToVersion("2.25.1", successfulUpdateCompleteCallback)
 
-		if err != nil {
-			t.Errorf("Attempting to update to the current version should return with no error, %v", err)
-		}
+		tests.H(t).ErrEql(err, nil)
 	})
 
 	t.Run("returns error if file server fails to update", func(t *testing.T) {
@@ -649,21 +562,13 @@ func TestClientUpdateToVersion(t *testing.T) {
 		}
 		err := loader.UpdateToVersion("2.25.2", unsuccessfulUpdateCompleteCallback)
 
-		if err == nil {
-			t.Fatalf("Expected no error, got %#v", err)
-		}
+		tests.H(t).ErrEql(err, downloader.ErrDowloadPackageFailed)
 
-		newVersionExists, err := afero.DirExists(fs, versionsPath+"/2.25.2")
+		newVersionExists, _ := afero.DirExists(fs, versionsPath+"/2.25.2")
+		oldVersionExists, _ := afero.DirExists(fs, versionsPath+"/2.25.1")
 
-		if newVersionExists || err != nil {
-			t.Fatalf("Expected new directoy to be removed, got %t, %#v", newVersionExists, err)
-		}
-
-		oldVersionExists, err := afero.DirExists(fs, versionsPath+"/2.25.1")
-
-		if !oldVersionExists || err != nil {
-			t.Fatalf("Expected old directoy to be removed, got %t, %#v", oldVersionExists, err)
-		}
+		tests.H(t).BoolEqlWithMessage(newVersionExists, false, "Expected new directoy to be removed on failure")
+		tests.H(t).BoolEqlWithMessage(oldVersionExists, true, "Expected old directoy to not be removed")
 	})
 }
 
@@ -690,9 +595,7 @@ func TestClientResetVersion(t *testing.T) {
 		fs.MkdirAll("/ui-versions/2.25.2", 0755)
 		err := loader.ResetVersion()
 
-		if err == nil {
-			t.Fatalf("Expected error, got nil")
-		}
+		tests.H(t).ErrEql(err, ErrCouldNotGetCurrentVersion)
 	})
 
 	t.Run("returns nil if there is not a current version", func(t *testing.T) {
@@ -714,13 +617,7 @@ func TestClientResetVersion(t *testing.T) {
 		fs.MkdirAll("/ui-versions", 0755)
 		err := loader.ResetVersion()
 
-		if err != nil {
-			t.Errorf("Expect no error, but got error %v", err)
-		}
-	})
-
-	t.Run("returns error if fails to remove current version", func(t *testing.T) {
-		// TODO: Can we test this?
+		tests.H(t).ErrEql(err, nil)
 	})
 
 	t.Run("return nil if current version is removed", func(t *testing.T) {
@@ -742,14 +639,10 @@ func TestClientResetVersion(t *testing.T) {
 		fs.MkdirAll(currentVersionPath, 0755)
 		err := loader.ResetVersion()
 
-		if err != nil {
-			t.Fatalf("Expected nil, got an error %#v", err)
-		}
+		tests.H(t).ErrEql(err, nil)
 
-		versionExists, err := afero.DirExists(fs, currentVersionPath)
+		versionExists, _ := afero.DirExists(fs, currentVersionPath)
 
-		if versionExists || err != nil {
-			t.Errorf("Expected version dir to not exist, got %t, %#v", versionExists, err)
-		}
+		tests.H(t).BoolEqlWithMessage(versionExists, false, "Expected version dir to not exist")
 	})
 }
