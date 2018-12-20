@@ -165,17 +165,17 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 		}
 		service.Lock()
 		if service.updating {
-			if version == service.updatingVersion {				
+			if version == service.updatingVersion {
 				http.Error(w, "Service is currently processing an update request", http.StatusAccepted)
 			} else {
 				http.Error(
-					w, 
+					w,
 					fmt.Sprintf("Service is currently processing an update request to %s", service.updatingVersion),
 					http.StatusConflict,
 				)
 			}
 			service.Unlock()
-			
+
 			return
 		}
 		service.updating = true
