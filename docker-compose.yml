@@ -26,4 +26,5 @@ services:
     image: jplock/zookeeper:3.4.13
     ports:
       - "2181:2181"
-
+    logging:
+      driver: none
