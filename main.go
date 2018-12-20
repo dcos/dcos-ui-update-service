@@ -29,15 +29,6 @@ func main() {
 	}
 }
 
-func initLogging(config *config.Config) {
-	// Set logging level
-	lvl, err := logrus.ParseLevel(config.LogLevel)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	logrus.SetLevel(lvl)
-}
-
 func listener(config *config.Config) net.Listener {
 	// Use systemd socket activation.
 	l, err := activation.Listeners()
