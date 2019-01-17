@@ -56,7 +56,7 @@ func updateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 		service.updating = true
 		service.updatingVersion = version
 		service.Unlock()
-		defer unlockServiceFromUpdate(service)
+		defer resetServiceFromUpdate(service)
 
 		err := service.UpdateManager.UpdateToVersion(version, func(newVersionPath string) error {
 			updateErr := service.UIHandler.UpdateDocumentRoot(newVersionPath)
