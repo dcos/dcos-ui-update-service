@@ -138,7 +138,7 @@ func handleVersionChange(service *UIService, newVersion string) {
 	}
 }
 
-func unlockServiceFromUpdate(service *UIService) {
+func resetServiceFromUpdate(service *UIService) {
 	service.Lock()
 	service.updating = false
 	service.updatingVersion = ""
