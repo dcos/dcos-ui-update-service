@@ -41,7 +41,7 @@ type Client struct {
 func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 	gzr, err := gzip.NewReader(bytes.NewReader(payload))
 	if err != nil {
-		logrus.WithError(err).Error("Failed to unzip new version package")
+		logrus.WithError(err).Error(ErrUnzippingPackageFailed.Error())
 		return ErrUnzippingPackageFailed
 	}
 	defer gzr.Close()
@@ -88,7 +88,7 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 			logrus.Infof("Extract tar.gz to directory: Creating file - %s", target)
 			f, err := d.Fs.OpenFile(target, os.O_CREATE|os.O_RDWR, 0755)
 			if err != nil {
-				logrus.WithError(err).Errorf("Error opening file while unpacking new version package. Target: %s", target)
+				logrus.WithError(err).Errorf("Error opening file while unzipping new version package. Target: %s", target)
 				return ErrCreatingFileWhileUnpacking
 			}
 			defer f.Close()
