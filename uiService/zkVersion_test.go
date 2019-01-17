@@ -145,7 +145,7 @@ func TestZKVersionStore(t *testing.T) {
 
 		select {
 		case <-callWait:
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 		}
 
 		tests.H(t).IntEql(watcherCallCount, 1)
