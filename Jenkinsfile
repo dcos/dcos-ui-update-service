@@ -23,7 +23,7 @@ pipeline {
   stages {
     stage("Build") {
       steps {
-        sh 'go build ./...'
+        sh 'GOOS=linux GO111MODULE=on go build ./...'
       }
     }
 

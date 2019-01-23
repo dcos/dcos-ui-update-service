@@ -62,6 +62,9 @@ func (h Helper) ErrEql(got, want error) {
 	if got == nil && want == nil {
 		return
 	}
+	if got != nil && want == nil {
+		h.t.Fatalf("error equality assertion failed, got %q wanted nil", got)
+	}
 	if got != nil && want != nil {
 		if got.Error() != want.Error() {
 			h.t.Fatalf("error equality assertion failed, got %q wanted %q", got, want.Error())
@@ -87,6 +90,13 @@ func (h Helper) BoolEql(got, want bool) {
 	h.t.Helper()
 	if got != want {
 		h.t.Fatalf("boolean equality assertion failed, got %t wanted %t", got, want)
+	}
+}
+
+func (h Helper) BoolEqlWithMessage(got, want bool, message string) {
+	h.t.Helper()
+	if got != want {
+		h.t.Fatalf("boolean equality assertion failed, got %t wanted %t - %s", got, want, message)
 	}
 }
 

@@ -1,6 +1,4 @@
-FROM golang:1.11
-WORKDIR /src
-EXPOSE 5000
+FROM golang:1.11.3
 
 RUN apt-get update && apt-get install -y curl vim python-pip groff && \
     pip install --upgrade awscli
@@ -10,4 +8,6 @@ RUN gometalinter --install
 
 RUN mkdir -p /run/dcos
 
-CMD /src/main
+ADD . /src
+WORKDIR /src
+EXPOSE 5000

@@ -93,7 +93,6 @@ func setupUIServiceWithMemoryFs() (*UIService, afero.Fs) {
 		versionStore: VersionStoreDouble(),
 	}, fs
 }
-
 func TestApplication(t *testing.T) {
 	// Get a socket to listen on.
 	l, err := listen()
@@ -231,13 +230,29 @@ func TestRouter(t *testing.T) {
 		rr := httptest.NewRecorder()
 		newRouter(service).ServeHTTP(rr, req)
 
-		if status := rr.Code; status != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got %v want %v",
-				status, http.StatusOK)
-		}
+		tests.H(t).IntEql(rr.Code, http.StatusOK)
+		tests.H(t).StringContains(rr.Body.String(), "Update to 2.24.4 completed")
 	})
 
-	t.Run("Version Update - update manager error", func(t *testing.T) {
+	t.Run("Version Update - unlocks after update", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/v1/update/2.24.4/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		service, fs := setupUIServiceWithMemoryFs()
+		fs.MkdirAll("/ui-versions/2.24.4/dist", 0755)
+
+		um := UpdateManagerDouble()
+		um.UpdateNewVersionPath = "/ui-versions/2.24.4/dist"
+		service.UpdateManager = um
+
+		rr := httptest.NewRecorder()
+		newRouter(service).ServeHTTP(rr, req)
+
+		tests.H(t).BoolEql(service.updating, false)
+	})
+
+	t.Run("Version Update - locked during update", func(t *testing.T) {
 		req, err := http.NewRequest("GET", "/api/v1/update/2.24.4/", nil)
 		if err != nil {
 			t.Fatal(err)
@@ -245,16 +260,34 @@ func TestRouter(t *testing.T) {
 		service, _ := setupUIServiceWithMemoryFs()
 
 		um := UpdateManagerDouble()
-		um.UpdateError = errors.New("Things went boom!")
 		service.UpdateManager = um
+		service.updating = true
+		service.updatingVersion = "2.24.4"
 
 		rr := httptest.NewRecorder()
 		newRouter(service).ServeHTTP(rr, req)
 
-		if status := rr.Code; status != http.StatusLocked {
-			t.Errorf("handler returned wrong status code: got %v want %v",
-				status, http.StatusLocked)
+		tests.H(t).IntEql(rr.Code, http.StatusAccepted)
+		tests.H(t).StringContains(rr.Body.String(), "Service is currently processing an update request")
+	})
+
+	t.Run("Version Update - locked during update to different version", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/v1/update/2.24.4/", nil)
+		if err != nil {
+			t.Fatal(err)
 		}
+		service, _ := setupUIServiceWithMemoryFs()
+
+		um := UpdateManagerDouble()
+		service.UpdateManager = um
+		service.updating = true
+		service.updatingVersion = "2.24.3"
+
+		rr := httptest.NewRecorder()
+		newRouter(service).ServeHTTP(rr, req)
+
+		tests.H(t).IntEql(rr.Code, http.StatusConflict)
+		tests.H(t).StringContains(rr.Body.String(), "Service is currently processing an update request to 2.24.3")
 	})
 
 	t.Run("Version Update - store error", func(t *testing.T) {
@@ -277,10 +310,26 @@ func TestRouter(t *testing.T) {
 		rr := httptest.NewRecorder()
 		newRouter(service).ServeHTTP(rr, req)
 
-		if status := rr.Code; status != http.StatusLocked {
-			t.Errorf("handler returned wrong status code: got %v want %v",
-				status, http.StatusLocked)
+		tests.H(t).IntEql(rr.Code, http.StatusInternalServerError)
+		tests.H(t).StringContains(rr.Body.String(), "Failed to update version in store")
+	})
+
+	t.Run("Version Update - version not available", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/v1/update/2.24.4/", nil)
+		if err != nil {
+			t.Fatal(err)
 		}
+		service, _ := setupUIServiceWithMemoryFs()
+
+		um := UpdateManagerDouble()
+		um.UpdateError = updateManager.ErrRequestedVersionNotFound
+		service.UpdateManager = um
+
+		rr := httptest.NewRecorder()
+		newRouter(service).ServeHTTP(rr, req)
+
+		tests.H(t).IntEql(rr.Code, http.StatusBadRequest)
+		tests.H(t).StringContains(rr.Body.String(), updateManager.ErrRequestedVersionNotFound.Error())
 	})
 }
 

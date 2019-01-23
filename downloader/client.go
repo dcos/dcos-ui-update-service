@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +14,19 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
+)
+
+var (
+	// ErrDowloadPackageFailed occurs if we cannot download the package
+	ErrDowloadPackageFailed = errors.New("Failed to download package")
+	// ErrBadPackageDownloadResponse occurs if we cannot read the response when downloading a package
+	ErrBadPackageDownloadResponse = errors.New("Received a bad response when downloading package")
+	// ErrUnzippingPackageFailed occurs if we cannot unzip the package after downloading
+	ErrUnzippingPackageFailed = errors.New("Error unzipping package")
+	// ErrCreatingDirectoryWhileUnpacking occurs if we cannot create a directory while unzipping the package
+	ErrCreatingDirectoryWhileUnpacking = errors.New("Could not create directory while unzipping package")
+	// ErrCreatingFileWhileUnpacking occurs if we cannot open or copy an archive file while unzipping the package
+	ErrCreatingFileWhileUnpacking = errors.New("Failed to create file while unzipping package")
 )
 
 // Client is used to download a package from a URL and extract it to the filesystem
@@ -29,7 +41,8 @@ type Client struct {
 func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 	gzr, err := gzip.NewReader(bytes.NewReader(payload))
 	if err != nil {
-		return fmt.Errorf("Error unzipping the payload")
+		logrus.WithError(err).Error(ErrUnzippingPackageFailed.Error())
+		return ErrUnzippingPackageFailed
 	}
 	defer gzr.Close()
 	tr := tar.NewReader(gzr)
@@ -65,7 +78,8 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 			logrus.Infof("Extract tar.gz to directory: Creating directory - %s", target)
 			if _, err := d.Fs.Stat(target); err != nil {
 				if err := d.Fs.MkdirAll(target, 0755); err != nil {
-					return errors.Wrap(err, fmt.Sprintf("error making directory %s", target))
+					logrus.WithError(err).Errorf("Failed to make directory while unzipping new version package. Target: %s", target)
+					return ErrCreatingDirectoryWhileUnpacking
 				}
 			}
 
@@ -74,13 +88,15 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 			logrus.Infof("Extract tar.gz to directory: Creating file - %s", target)
 			f, err := d.Fs.OpenFile(target, os.O_CREATE|os.O_RDWR, 0755)
 			if err != nil {
-				return errors.Wrap(err, fmt.Sprintf("error opening file for writing %s", target))
+				logrus.WithError(err).Errorf("Error opening file while unzipping new version package. Target: %s", target)
+				return ErrCreatingFileWhileUnpacking
 			}
 			defer f.Close()
 
 			// copy over contents
 			if _, err := io.Copy(f, tr); err != nil {
-				return errors.Wrap(err, fmt.Sprintf("error copying file contents to archive %s", target))
+				logrus.WithError(err).Errorf("Failed to copy file contents from archive. Target: %s", target)
+				return ErrCreatingFileWhileUnpacking
 			}
 		}
 	}
@@ -94,16 +110,19 @@ func (d *Client) DownloadAndUnpack(fileURL *url.URL, targetDirectory string) err
 	req.Header.Set("content-type", "application/octet-stream")
 	resp, err := d.client.Do(req)
 	if err != nil {
-		return err
+		logrus.WithError(err).Error("Package download request failed")
+		return ErrDowloadPackageFailed
 	}
-	logrus.WithFields(logrus.Fields{"statusCode": resp.StatusCode}).Info("Download and unpack: response received")
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download package %v", resp.StatusCode)
+		logrus.WithField("statusCode", resp.StatusCode).Error("Download and unpack: non-OK response received")
+		return ErrDowloadPackageFailed
 	}
+	logrus.WithField("statusCode", resp.StatusCode).Info("Download and unpack: response received")
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("could not read response body: %s", err)
+		logrus.WithError(err).Error("Failed to read package download response body")
+		return ErrBadPackageDownloadResponse
 	}
 	err = d.extractTarGzToDir(targetDirectory, body)
 	if err != nil {

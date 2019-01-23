@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/coreos/go-systemd/activation"
 	"github.com/dcos/dcos-ui-update-service/config"
@@ -28,6 +30,12 @@ type UIService struct {
 	MasterCounter dcos.MasterCounter
 
 	versionStore uiService.VersionStore
+
+	updating bool
+
+	updatingVersion string
+
+	sync.Mutex
 }
 
 // SetupUIHandler create UIFileHandler for service ui and set default directory to
@@ -155,6 +163,25 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		service.Lock()
+		if service.updating {
+			if version == service.updatingVersion {
+				http.Error(w, "Service is currently processing an update request", http.StatusAccepted)
+			} else {
+				http.Error(
+					w,
+					fmt.Sprintf("Service is currently processing an update request to %s", service.updatingVersion),
+					http.StatusConflict,
+				)
+			}
+			service.Unlock()
+
+			return
+		}
+		service.updating = true
+		service.updatingVersion = version
+		service.Unlock()
+		defer resetServiceFromUpdate(service)
 
 		err := service.UpdateManager.UpdateToVersion(version, func(newVersionPath string) error {
 			updateErr := service.UIHandler.UpdateDocumentRoot(newVersionPath)
@@ -169,18 +196,30 @@ func UpdateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 			return nil
 		})
 
-		if err != nil {
+		switch err {
+		case nil:
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(fmt.Sprintf("Update to %s completed", version)))
+			return
+		case updateManager.ErrRequestedVersionNotFound:
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		default:
 			logrus.WithFields(logrus.Fields{
 				"version": version,
 				"err":     err,
 			}).Error("Update failed")
-			// This returns locked on every error, it would be better if we would return a boolean if the process is locked
-			w.WriteHeader(http.StatusLocked)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		w.WriteHeader(http.StatusOK)
 	}
+}
+
+func resetServiceFromUpdate(service *UIService) {
+	service.Lock()
+	service.updating = false
+	service.updatingVersion = ""
+	service.Unlock()
 }
 
 // ResetToDefaultUIHandler processes requests to reset to the default ui
