@@ -5,10 +5,6 @@ require (
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/coreos/go-systemd v0.0.0-20181012123002-c6f51f82210d
 	github.com/dcos/dcos-go v0.0.0-20181019125502-5f6f91b575d8
-	github.com/docker/distribution v2.6.2+incompatible // indirect
-	github.com/docker/docker v1.13.1
-	github.com/docker/go-connections v0.4.0
-	github.com/docker/go-units v0.3.3 // indirect
 	github.com/google/go-cmp v0.2.0
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.6.2
