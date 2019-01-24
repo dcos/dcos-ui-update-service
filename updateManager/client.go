@@ -3,7 +3,9 @@ package updateManager
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"path"
+	"regexp"
 	"sync"
 
 	"github.com/dcos/dcos-ui-update-service/config"
@@ -15,6 +17,8 @@ import (
 )
 
 var (
+	// ErrUIDistSymlinkNotFound occurs if the Configured UIDistSymlink doesn't exists or can't be accessed
+	ErrUIDistSymlinkNotFound = errors.New("Cannot read UI-dist symlink")
 	// ErrVersionsPathDoesNotExist occurs if the configured VersionPath doesn't exist
 	ErrVersionsPathDoesNotExist = errors.New("Versions path does not exist")
 	// ErrMultipleVersionFound occurs if there is more than one version found when getting current version
@@ -31,8 +35,8 @@ var (
 	ErrUIPackageAssetNotFound = errors.New("Could not find dcos-ui-bundle asset in package details")
 	// ErrUIPackageAssetBadURI occurs if the dcos-ui-bundle asset URI cannot be parsed
 	ErrUIPackageAssetBadURI = errors.New("Failed to parse dcos-ui-bundle asset URI")
-	// ErrRemovingOldVersion occurs if removing the old version fails while updating
-	ErrRemovingOldVersion = errors.New("Failed to remove the old version after update")
+	// ErrRemovingVersion occurs if removing the version fails
+	ErrRemovingVersion = errors.New("Failed to remove the version")
 )
 
 // Client handles access to common setup question
@@ -40,14 +44,14 @@ type Client struct {
 	Cosmos      *cosmos.Client
 	Loader      *downloader.Client
 	UniverseURL *url.URL
-	VersionPath string
+	Config      *config.Config
 	Fs          afero.Fs
 	sync.Mutex
 }
 
 type UpdateManager interface {
 	UpdateToVersion(string, func(string) error) error
-	ResetVersion() error
+	RemoveVersion(string) error
 	CurrentVersion() (string, error)
 	PathToCurrentVersion() (string, error)
 }
@@ -64,7 +68,7 @@ func NewClient(cfg *config.Config) (*Client, error) {
 		Cosmos:      cosmos.NewClient(universeURL),
 		Loader:      downloader.New(fs),
 		UniverseURL: universeURL,
-		VersionPath: cfg.VersionsRoot,
+		Config:      cfg,
 		Fs:          fs,
 	}, nil
 }
@@ -115,70 +119,54 @@ func (um *Client) loadVersion(version string, targetDirectory string) error {
 	return nil
 }
 
-// CurrentVersion retrieves the current version of the package
+// CurrentVersion retrieves the current version being served
 func (um *Client) CurrentVersion() (string, error) {
 	um.Lock()
 	defer um.Unlock()
 
-	exists, err := afero.DirExists(um.Fs, um.VersionPath)
-
-	if !exists || err != nil {
-		return "", ErrVersionsPathDoesNotExist
-	}
-
-	files, err := afero.ReadDir(um.Fs, um.VersionPath)
-
+	servedVersionPath, err := os.Readlink(um.Config.UIDistSymlink)
 	if err != nil {
-		return "", fmt.Errorf("could not read files from verion path")
+		return "", ErrUIDistSymlinkNotFound
 	}
 
-	var dirs []string
-
-	for _, file := range files {
-		if file.IsDir() {
-			dirs = append(dirs, file.Name())
-		}
-	}
-
-	if len(dirs) == 0 {
-		logrus.Info("Retrieving current version: No version directory found")
+	if servedVersionPath == um.Config.DefaultDocRoot {
 		return "", nil
 	}
 
-	if len(dirs) != 1 {
-		logrus.Errorf("Detected more than one directory: %#v", dirs)
-		return "", ErrMultipleVersionFound
+	versionPath, distDir := path.Split(servedVersionPath)
+	if distDir != "dist" {
+		return "", fmt.Errorf("Expected served version directory to be `dist` but got %s", distDir)
 	}
 
-	logrus.WithFields(logrus.Fields{"currentVersion": dirs[0]}).Info("Found current version")
+	currentVersion := path.Base(versionPath)
+
+	// validate `currentVersion` is a version number
+	if match, err := regexp.MatchString(`^\d+\.\d+\.\d+(\.\d+)?$`, currentVersion); err != nil || !match {
+		return "", fmt.Errorf("Expected served version directory to match a semver value, but got %s", currentVersion)
+	}
+
+	logrus.WithFields(logrus.Fields{"currentVersion": currentVersion}).Info("Found current version")
 	// by looking at the dirs for now
-	return dirs[0], nil
+	return currentVersion, nil
 }
 
 // PathToCurrentVersion return the filesystem path to the current UI version
 // or returns an error is the current version cannot be determined
 func (um *Client) PathToCurrentVersion() (string, error) {
-	currentVersion, err := um.CurrentVersion()
-	logrus.WithFields(logrus.Fields{"currentVersion": currentVersion}).Info("Retrieving path to current version: Found current version")
+	servedVersionPath, err := os.Readlink(um.Config.UIDistSymlink)
 	if err != nil {
-		return "", err
+		return "", ErrUIDistSymlinkNotFound
 	}
-	if len(currentVersion) == 0 {
-		return "", fmt.Errorf("there is no current version available")
-	}
-
-	versionPath := path.Join(um.VersionPath, currentVersion, "dist")
-	logrus.WithFields(logrus.Fields{"versionPath": currentVersion}).Info("Found path to current version")
-	return versionPath, nil
+	return servedVersionPath, nil
 }
 
 // UpdateToVersion updates the ui to the given version
 func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(string) error) error {
 	// Find out which version we currently have
-	currentVersion, err := um.CurrentVersion()
+	currentVersion, cvErr := um.CurrentVersion()
 
-	if err != nil {
-		logrus.WithError(err).Error("Could not get current version for update")
+	if cvErr != nil {
+		logrus.WithError(cvErr).Error("Could not get current version for update")
 		return ErrCouldNotGetCurrentVersion
 	}
 
@@ -190,9 +178,19 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 	um.Lock()
 	defer um.Unlock()
 
-	targetDir := path.Join(um.VersionPath, version)
+	if exists, err := afero.DirExists(um.Fs, um.Config.VersionsRoot); err != nil || !exists {
+		if err != nil {
+			logrus.WithError(err).Error("DirExists check for VersionsRoot failed")
+		} else {
+			logrus.Error("DirExists check for VersionsRoot failed")
+		}
+
+		return ErrVersionsPathDoesNotExist
+	}
+
+	targetDir := path.Join(um.Config.VersionsRoot, version)
 	// Create directory for next version
-	err = um.Fs.MkdirAll(targetDir, 0755)
+	err := um.Fs.MkdirAll(targetDir, 0755)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create new version directory for update")
 		return ErrCouldNotCreateNewVersionDirectory
@@ -216,36 +214,29 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 	}
 
 	if len(currentVersion) > 0 {
-		// Removes old version directory
-		err = um.Fs.RemoveAll(path.Join(um.VersionPath, currentVersion))
-		if err != nil {
-			logrus.WithError(err).Error("Could not remove old version after update")
-			return ErrRemovingOldVersion
-		}
-		logrus.Info("Removed old version directory")
+		// Remove the old version
+		return um.RemoveVersion(currentVersion)
 	}
 
 	return nil
 }
 
-func (um *Client) ResetVersion() error {
-	currentVersion, err := um.CurrentVersion()
+func (um *Client) RemoveVersion(version string) error {
+	versionPath := path.Join(um.Config.VersionsRoot, version)
+	if exists, err := afero.DirExists(um.Fs, versionPath); err != nil || !exists {
+		if err != nil {
+			logrus.WithError(err).Error("RemoveVersion failed, version path check failed.")
+		} else {
+			logrus.Error("RemoveVersion failed, version path check failed.")
+		}
+		return ErrRequestedVersionNotFound
+	}
 
+	err := um.Fs.RemoveAll(versionPath)
 	if err != nil {
-		logrus.WithError(err).Error("Could not get current version for reset")
-		return ErrCouldNotGetCurrentVersion
+		logrus.WithError(err).Error("Could not remove version.")
+		return ErrRemovingVersion
 	}
-
-	if len(currentVersion) == 0 {
-		logrus.Info("No current version to reset")
-		return nil
-	}
-
-	err = um.Fs.RemoveAll(path.Join(um.VersionPath, currentVersion))
-	if err != nil {
-		logrus.WithError(err).Error("Could not remove old version after reset")
-		return ErrRemovingOldVersion
-	}
-	logrus.Info("Removed current version")
+	logrus.Infof("Removed version v%s", version)
 	return nil
 }

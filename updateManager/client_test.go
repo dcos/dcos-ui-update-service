@@ -1,17 +1,17 @@
 package updateManager
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path"
 	"strings"
 	"testing"
 
+	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/cosmos"
 	"github.com/dcos/dcos-ui-update-service/downloader"
 	"github.com/dcos/dcos-ui-update-service/tests"
@@ -52,281 +52,292 @@ const noBundleInAssetsDescribeResponse = `{
 				}
 			}}`
 
-func TestClientLoadVersion(t *testing.T) {
-	// Use single quote backticks instead of escape
-	defaultHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		path := req.URL.Path
-		if path == "/package/list-versions" {
-			io.WriteString(rw, defaultListResponse)
-		}
+func setupServingDefault(t *testing.T) {
+	t.Log("Setup serving pre-bundled UI")
+	os.MkdirAll("../testdata/um-sandbox/ui-versions", 0755)
+	os.MkdirAll("../testdata/um-sandbox/dcos-ui", 0755)
+	os.Symlink("../testdata/um-sandbox/dcos-ui", "../testdata/um-sandbox/dcos-ui-dist")
+}
+func setupServingSpecificVersion(t *testing.T, version string) {
+	t.Logf("Setup serving UI v%s", version)
+	versionPath := path.Join(path.Join("../testdata/um-sandbox/ui-versions/", version), "dist")
+	os.MkdirAll(versionPath, 0755)
+	os.MkdirAll("../testdata/um-sandbox/dcos-ui", 0755)
+	os.Symlink(versionPath, "../testdata/um-sandbox/dcos-ui-dist")
+}
+func setupServingVersion(t *testing.T) {
+	setupServingSpecificVersion(t, "1.0.0")
+}
 
-		if path == "/package/describe" {
-			var request cosmos.PackageDetailRequest
-
-			body, err := ioutil.ReadAll(req.Body)
-			if err != nil {
-				return
-			}
-			defer req.Body.Close()
-			err = json.Unmarshal(body, &request)
-			if err != nil {
-				return
-			}
-
-			// 2.25.0 => everything is there
-			if request.PackageVersion == "2.25.0" {
-				io.WriteString(rw, defaultDescribeResponse)
-			}
-
-			// 2.25.1 => file not found
-			if request.PackageVersion == "2.25.1" {
-				io.WriteString(rw, noFileFoundDescribeResponse)
-			}
-
-			// 2.25.2 => asset unknown
-			if request.PackageVersion == "2.25.2" {
-				io.WriteString(rw, noBundleInAssetsDescribeResponse)
-			}
-		}
-	})
-
-	t.Parallel()
-
-	t.Run("throws an error if it can't reach the server", func(t *testing.T) {
-		server := httptest.NewServer(defaultHandler)
-		// Close the server when test finishes
-		defer server.Close()
-		cosmosURL, _ := url.Parse("http://example.com")
-		cosmos := cosmos.NewClient(cosmosURL)
-		fs := afero.NewMemMapFs()
-
-		loader := Client{
-			Cosmos: cosmos,
-			Loader: downloader.New(fs),
-			Fs:     fs,
-		}
-
-		err := loader.loadVersion("2.25.0", "/")
-
-		tests.H(t).ErrEql(err, ErrCosmosRequestFailure)
-	})
-
-	t.Run("throws an error if the requested version is not available", func(t *testing.T) {
-		server := httptest.NewServer(defaultHandler)
-		// Close the server when test finishes
-		defer server.Close()
-
-		cosmosURL, _ := url.Parse(server.URL)
-		cosmos := cosmos.NewClient(cosmosURL)
-		fs := afero.NewMemMapFs()
-
-		loader := Client{
-			Cosmos: cosmos,
-			Loader: downloader.New(fs),
-			Fs:     fs,
-		}
-
-		err := loader.loadVersion("3.25.0", "/")
-
-		tests.H(t).ErrEql(err, ErrRequestedVersionNotFound)
-	})
-
-	t.Run("throws error if one of the file named dcos-ui-bundle can not be found in the assets", func(t *testing.T) {
-		server := httptest.NewServer(defaultHandler)
-		// Close the server when test finishes
-		defer server.Close()
-
-		cosmosURL, _ := url.Parse(server.URL)
-		cosmos := cosmos.NewClient(cosmosURL)
-		fs := afero.NewMemMapFs()
-
-		loader := Client{
-			Cosmos: cosmos,
-			Loader: downloader.New(fs),
-			Fs:     fs,
-		}
-
-		err := loader.loadVersion("2.25.2", "/")
-
-		tests.H(t).ErrEql(err, ErrUIPackageAssetNotFound)
-	})
-
-	t.Run("throws error if one of the files could not be downloaded", func(t *testing.T) {
-		server := httptest.NewServer(defaultHandler)
-		// Close the server when test finishes
-		defer server.Close()
-
-		cosmosURL, _ := url.Parse(server.URL)
-		cosmos := cosmos.NewClient(cosmosURL)
-		fs := afero.NewMemMapFs()
-
-		loader := Client{
-			Cosmos: cosmos,
-			Loader: downloader.New(fs),
-			Fs:     fs,
-		}
-
-		err := loader.loadVersion("2.25.1", "/")
-
-		tests.H(t).ErrEql(err, downloader.ErrDowloadPackageFailed)
-	})
+func tearDown(t *testing.T) {
+	t.Log("Teardown testdata sandbox")
+	os.RemoveAll("../testdata/um-sandbox")
 }
 
 func TestClientCurrentVersion(t *testing.T) {
-	t.Parallel()
+	t.Run("returns empty sting if serving the pre-bundled ui", func(t *testing.T) {
+		setupServingDefault(t)
+		defer tearDown(t)
 
-	t.Run("throws error if the VersionPath directory does not exist", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
-
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
-		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
-		}
-
-		_, err := loader.CurrentVersion()
-
-		tests.H(t).ErrEql(err, ErrVersionsPathDoesNotExist)
-	})
-
-	t.Run("returns empty string if VersionPath directory is empty", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
-		// Close the server when test finishes
-		defer server.Close()
-		fs := afero.NewMemMapFs()
-
-		cosmosURL, _ := url.Parse(server.URL)
-		cosmos := cosmos.NewClient(cosmosURL)
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
 
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 
-		fs.MkdirAll("/ui-versions", 0755)
 		ver, err := loader.CurrentVersion()
 
-		tests.H(t).ErrEql(err, nil)
+		tests.H(t).IsNil(err)
 		tests.H(t).StringEql(ver, "")
 	})
 
-	t.Run("returns name of the only directory in VersionPath", func(t *testing.T) {
+	t.Run("returns error if the UIDistSymlink does not exist", func(t *testing.T) {
+		setupServingDefault(t)
+		defer tearDown(t)
+
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
-
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-bad"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
+
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 
-		fs.MkdirAll("/ui-versions/2.25.3", 0755)
-		result, err := loader.CurrentVersion()
+		_, err := loader.CurrentVersion()
 
-		tests.H(t).ErrEql(err, nil)
-		tests.H(t).StringEql(result, "2.25.3")
+		tests.H(t).ErrEql(err, ErrUIDistSymlinkNotFound)
+	})
+
+	t.Run("return version number if serving a version", func(t *testing.T) {
+		setupServingVersion(t)
+		defer tearDown(t)
+
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
+		// Close the server when test finishes
+		defer server.Close()
+		cosmosURL, _ := url.Parse(server.URL)
+		cosmos := cosmos.NewClient(cosmosURL)
+
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
+
+		loader := Client{
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
+		}
+
+		ver, err := loader.CurrentVersion()
+
+		tests.H(t).IsNil(err)
+		tests.H(t).StringEql(ver, "1.0.0")
+	})
+
+	t.Run("return error if non-default isn't serving dist folder", func(t *testing.T) {
+		// Setup bad version
+		os.MkdirAll("../testdata/um-sandbox/ui-versions/1.0.0", 0755)
+		os.MkdirAll("../testdata/um-sandbox/dcos-ui", 0755)
+		os.Symlink("../testdata/um-sandbox/ui-versions/1.0.0", "../testdata/um-sandbox/dcos-ui-dist")
+		defer tearDown(t)
+
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
+		// Close the server when test finishes
+		defer server.Close()
+		cosmosURL, _ := url.Parse(server.URL)
+		cosmos := cosmos.NewClient(cosmosURL)
+
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
+
+		loader := Client{
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
+		}
+
+		_, err := loader.CurrentVersion()
+
+		tests.H(t).StringContains(err.Error(), "Expected served version directory to be `dist` but got")
 	})
 
 	t.Run("returns error if there are more than one directory in VersionPath", func(t *testing.T) {
+		// Setup bad version
+		os.MkdirAll("../testdata/um-sandbox/ui-versions/not_semver/dist", 0755)
+		os.MkdirAll("../testdata/um-sandbox/dcos-ui", 0755)
+		os.Symlink("../testdata/um-sandbox/ui-versions/not_semver/dist", "../testdata/um-sandbox/dcos-ui-dist")
+		defer tearDown(t)
+
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
-
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
+
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 
-		fs.MkdirAll("/ui-versions/2.25.3", 0755)
-		fs.MkdirAll("/ui-versions/2.25.7", 0755)
 		_, err := loader.CurrentVersion()
 
-		tests.H(t).ErrEql(err, ErrMultipleVersionFound)
+		tests.H(t).StringContains(err.Error(), "Expected served version directory to match a semver value, but got")
 	})
 }
-
 func TestClientPathToCurrentVersion(t *testing.T) {
-	t.Parallel()
-
 	t.Run("returns path to version", func(t *testing.T) {
+		defer tearDown(t)
+		setupServingVersion(t)
+
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
-
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
+
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 
-		fs.MkdirAll("/ui-versions/2.25.3", 0755)
 		result, err := loader.PathToCurrentVersion()
 
 		tests.H(t).ErrEql(err, nil)
-		tests.H(t).StringEql(result, "/ui-versions/2.25.3/dist")
+		tests.H(t).StringEql(result, "../testdata/um-sandbox/ui-versions/1.0.0/dist")
 	})
 
 	t.Run("throws error if VersionPath directory is empty", func(t *testing.T) {
+		defer tearDown(t)
+		setupServingDefault(t)
+
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
+		// Close the server when test finishes
+		defer server.Close()
+		cosmosURL, _ := url.Parse(server.URL)
+		cosmos := cosmos.NewClient(cosmosURL)
+
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-bad"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
+
+		loader := Client{
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
+		}
+
+		_, err := loader.PathToCurrentVersion()
+
+		tests.H(t).ErrEql(err, ErrUIDistSymlinkNotFound)
+	})
+}
+func TestClientRemoveVersion(t *testing.T) {
+	t.Parallel()
+
+	t.Run("return nil if current version is removed", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "/ui-versions"
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
+		currentVersionPath := "/ui-versions/2.25.3/dist"
+		fs.MkdirAll(currentVersionPath, 0755)
+		err := loader.RemoveVersion("2.25.3")
 
-		fs.MkdirAll("/ui-versions", 0755)
-		_, err := loader.PathToCurrentVersion()
+		tests.H(t).ErrEql(err, nil)
 
-		if err == nil {
-			t.Error("did not return an error for an empty versions dir")
+		versionExists, _ := afero.DirExists(fs, currentVersionPath)
+
+		tests.H(t).BoolEqlWithMessage(versionExists, false, "Expected version dir to not exist")
+	})
+
+	t.Run("returns ErrRequestedVersionNotFound is version not found", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
+		// Close the server when test finishes
+		defer server.Close()
+		fs := afero.NewMemMapFs()
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "/ui-versions"
+
+		cosmosURL, _ := url.Parse(server.URL)
+		cosmos := cosmos.NewClient(cosmosURL)
+
+		loader := Client{
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
+		currentVersionPath := "/ui-versions/2.25.3/dist"
+		fs.MkdirAll(currentVersionPath, 0755)
+		err := loader.RemoveVersion("2.25.4")
+
+		tests.H(t).ErrEql(err, ErrRequestedVersionNotFound)
 	})
 }
 
-func successfulUpdateCompleteCallback(s string) error {
-	return nil
-}
-
-func unsuccessfulUpdateCompleteCallback(s string) error {
-	return errors.New("error completing update")
-}
-
 func TestClientUpdateToVersion(t *testing.T) {
-	t.Parallel()
 
 	t.Run("creates update in new dir when no current version exists", func(t *testing.T) {
 		urlChan := make(chan string, 3) // because three requests will be made
@@ -347,34 +358,40 @@ func TestClientUpdateToVersion(t *testing.T) {
 		urlChan <- server.URL
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
-		versionsPath := "/ui-versions"
+		defer tearDown(t)
+		setupServingDefault(t)
+
+		fs := afero.NewOsFs()
+
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: versionsPath,
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 
-		fs.MkdirAll(versionsPath, 0755)
 		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %#v", err)
 		}
 
-		newVersionPath := path.Join(versionsPath, "2.25.2")
+		newVersionPath := path.Join(cfg.VersionsRoot, "2.25.2")
 		newVersionExists, err := afero.DirExists(fs, newVersionPath)
 
 		if !newVersionExists || err != nil {
 			t.Fatalf("Expected new directory to exist, got %t, %#v", newVersionExists, err)
 		}
 
-		files, err := afero.ReadDir(fs, versionsPath)
+		files, err := afero.ReadDir(fs, cfg.VersionsRoot)
 
 		tests.H(t).ErrEql(err, nil)
 
@@ -390,7 +407,8 @@ func TestClientUpdateToVersion(t *testing.T) {
 		tests.H(t).BoolEqlWithMessage(onlyNewVersionExists, true, "Expected only new version directory to exist")
 	})
 
-	t.Run("returns error if it can't upgrade", func(t *testing.T) {
+	t.Run("returns error if it can't download package", func(t *testing.T) {
+		// Setup mock cosmos for test
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			path := req.URL.Path
 			if path == "/package/list-versions" {
@@ -403,21 +421,29 @@ func TestClientUpdateToVersion(t *testing.T) {
 		}))
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
+
+		defer tearDown(t)
+		setupServingDefault(t)
+
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 
 		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
-		tests.H(t).ErrEql(err, ErrCouldNotGetCurrentVersion)
+		tests.H(t).ErrEql(err, downloader.ErrDowloadPackageFailed)
 	})
 
 	t.Run("removes new version dir if update fails", func(t *testing.T) {
@@ -433,16 +459,24 @@ func TestClientUpdateToVersion(t *testing.T) {
 		}))
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
+
+		defer tearDown(t)
+		setupServingDefault(t)
+
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 
 		loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
@@ -471,26 +505,32 @@ func TestClientUpdateToVersion(t *testing.T) {
 		urlChan <- server.URL
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
-		versionsPath := "/ui-versions"
+
+		defer tearDown(t)
+		setupServingSpecificVersion(t, "2.25.1")
+
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: versionsPath,
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 
-		fs.MkdirAll("/ui-versions/2.25.1", 0755)
 		err := loader.UpdateToVersion("2.25.2", successfulUpdateCompleteCallback)
 
 		tests.H(t).ErrEql(err, nil)
 
-		newVersionExists, _ := afero.DirExists(fs, versionsPath+"/2.25.2")
-		oldVersionExists, _ := afero.DirExists(fs, versionsPath+"/2.25.1")
+		newVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot, "/2.25.2"))
+		oldVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot, "/2.25.1"))
 
 		tests.H(t).BoolEqlWithMessage(newVersionExists, true, "Expected new directoy to exist on failure")
 		tests.H(t).BoolEqlWithMessage(oldVersionExists, false, "Expected old directoy to be removed")
@@ -509,18 +549,24 @@ func TestClientUpdateToVersion(t *testing.T) {
 		}))
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
-		versionsPath := "/ui-versions"
-		fs.MkdirAll("/ui-versions/2.25.1", 0755)
+
+		defer tearDown(t)
+		setupServingSpecificVersion(t, "2.25.1")
+
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: versionsPath,
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 
 		err := loader.UpdateToVersion("2.25.1", successfulUpdateCompleteCallback)
@@ -528,7 +574,7 @@ func TestClientUpdateToVersion(t *testing.T) {
 		tests.H(t).ErrEql(err, nil)
 	})
 
-	t.Run("returns error if file server fails to update", func(t *testing.T) {
+	t.Run("returns error if complete callback returns an error", func(t *testing.T) {
 		urlChan := make(chan string, 3) // because three requests will be made
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			baseURL := <-urlChan
@@ -547,102 +593,41 @@ func TestClientUpdateToVersion(t *testing.T) {
 		urlChan <- server.URL
 		// Close the server when test finishes
 		defer server.Close()
-		fs := afero.NewMemMapFs()
-		versionsPath := "/ui-versions"
-		fs.MkdirAll("/ui-versions/2.25.1", 0755)
+
+		defer tearDown(t)
+		setupServingSpecificVersion(t, "2.25.1")
+
+		cfg := config.NewDefaultConfig()
+		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
+		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
+		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
 		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: versionsPath,
-			Fs:          fs,
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
 		}
 		err := loader.UpdateToVersion("2.25.2", unsuccessfulUpdateCompleteCallback)
 
 		tests.H(t).ErrEql(err, downloader.ErrDowloadPackageFailed)
 
-		newVersionExists, _ := afero.DirExists(fs, versionsPath+"/2.25.2")
-		oldVersionExists, _ := afero.DirExists(fs, versionsPath+"/2.25.1")
+		newVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot, "/2.25.2"))
+		oldVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot, "/2.25.1"))
 
 		tests.H(t).BoolEqlWithMessage(newVersionExists, false, "Expected new directoy to be removed on failure")
 		tests.H(t).BoolEqlWithMessage(oldVersionExists, true, "Expected old directoy to not be removed")
 	})
 }
 
-func TestClientResetVersion(t *testing.T) {
-	t.Parallel()
+func successfulUpdateCompleteCallback(s string) error {
+	return nil
+}
 
-	t.Run("returns error if cant get current version", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
-		// Close the server when test finishes
-		defer server.Close()
-		fs := afero.NewMemMapFs()
-
-		cosmosURL, _ := url.Parse(server.URL)
-		cosmos := cosmos.NewClient(cosmosURL)
-
-		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
-		}
-
-		fs.MkdirAll("/ui-versions/2.25.3", 0755)
-		fs.MkdirAll("/ui-versions/2.25.2", 0755)
-		err := loader.ResetVersion()
-
-		tests.H(t).ErrEql(err, ErrCouldNotGetCurrentVersion)
-	})
-
-	t.Run("returns nil if there is not a current version", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
-		// Close the server when test finishes
-		defer server.Close()
-		fs := afero.NewMemMapFs()
-
-		cosmosURL, _ := url.Parse(server.URL)
-		cosmos := cosmos.NewClient(cosmosURL)
-
-		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
-		}
-
-		fs.MkdirAll("/ui-versions", 0755)
-		err := loader.ResetVersion()
-
-		tests.H(t).ErrEql(err, nil)
-	})
-
-	t.Run("return nil if current version is removed", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
-		// Close the server when test finishes
-		defer server.Close()
-		fs := afero.NewMemMapFs()
-
-		cosmosURL, _ := url.Parse(server.URL)
-		cosmos := cosmos.NewClient(cosmosURL)
-
-		loader := Client{
-			Cosmos:      cosmos,
-			Loader:      downloader.New(fs),
-			VersionPath: "/ui-versions",
-			Fs:          fs,
-		}
-		currentVersionPath := "/ui-versions/2.25.3"
-		fs.MkdirAll(currentVersionPath, 0755)
-		err := loader.ResetVersion()
-
-		tests.H(t).ErrEql(err, nil)
-
-		versionExists, _ := afero.DirExists(fs, currentVersionPath)
-
-		tests.H(t).BoolEqlWithMessage(versionExists, false, "Expected version dir to not exist")
-	})
+func unsuccessfulUpdateCompleteCallback(s string) error {
+	return errors.New("error completing update")
 }

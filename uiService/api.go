@@ -11,23 +11,37 @@ import (
 )
 
 func newRouter(service *UIService) *mux.Router {
-	assetPrefix := service.UIHandler.AssetPrefix()
-
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1/", notImplementedHandler)
-	r.HandleFunc("/api/v1/update/{version}/", updateHandler(service))
+	r.HandleFunc("/api/v1/version/", versionHandler(service)).Methods("GET")
+	r.HandleFunc("/api/v1/update/{version}/", updateHandler(service)).Methods("POST")
 	r.HandleFunc("/api/v1/reset/", resetToDefaultUIHandler(service)).Methods("DELETE")
-	r.PathPrefix(assetPrefix).Handler(service.UIHandler)
 
 	return r
 }
 
-// NotImplementedHandler writes a HTTP Not Implemented response
 func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// UpdateHandler processes update requests
+func versionHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		version, err := service.UpdateManager.CurrentVersion()
+		if err != nil {
+			logrus.WithError(err).Error("Could not get current version.")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Add("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		if len(version) > 0 {
+			w.Write([]byte(version))
+		} else {
+			w.Write([]byte("Default"))
+		}
+	}
+}
+
 func updateHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -38,10 +52,13 @@ func updateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		service.Lock()
-		if service.updating {
-			if version == service.updatingVersion {
-				http.Error(w, "Service is currently processing an update request", http.StatusAccepted)
+		if updatingVersion, err := setServiceUpdating(service, version); err != nil {
+			if version == updatingVersion {
+				http.Error(
+					w,
+					"Service is currently processing an update request",
+					http.StatusAccepted,
+				)
 			} else {
 				http.Error(
 					w,
@@ -49,20 +66,16 @@ func updateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 					http.StatusConflict,
 				)
 			}
-			service.Unlock()
-
 			return
 		}
-		service.updating = true
-		service.updatingVersion = version
-		service.Unlock()
 		defer resetServiceFromUpdate(service)
 
 		err := service.UpdateManager.UpdateToVersion(version, func(newVersionPath string) error {
-			updateErr := service.UIHandler.UpdateDocumentRoot(newVersionPath)
+			updateErr := updateServedVersion(service, newVersionPath)
 			if updateErr != nil {
-				return errors.Wrap(updateErr, "unable to update the document root to the new version")
+				return errors.Wrap(updateErr, "unable to update the ui dist symlink to the new version")
 			}
+
 			newUIVersion := UIVersion(version)
 			updateErr = service.VersionStore.UpdateCurrentVersion(newUIVersion)
 			if updateErr != nil {
@@ -73,6 +86,7 @@ func updateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 
 		switch err {
 		case nil:
+			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(fmt.Sprintf("Update to %s completed", version)))
 			return
@@ -90,15 +104,33 @@ func updateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 	}
 }
 
-// ResetToDefaultUIHandler processes requests to reset to the default ui
 func resetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// verify we aren't currently serving pre-bundled version
-		if service.Config.DefaultDocRoot == service.UIHandler.DocumentRoot() {
-			w.WriteHeader(http.StatusOK)
+		currentVersion, err := service.UpdateManager.CurrentVersion()
+		if err != nil {
+			logrus.WithError(err).Error("Failed to check the current version")
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		err := service.UIHandler.UpdateDocumentRoot(service.Config.DefaultDocRoot)
+		if currentVersion == "" {
+			w.Header().Add("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
+
+		if _, lockErr := setServiceUpdating(service, ""); lockErr != nil {
+			logrus.WithError(lockErr).Error("Attempted reset while an update was in progress")
+
+			w.Header().Add("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte("Cannot reset while an update or reset is in progress"))
+			return
+		}
+		defer resetServiceFromUpdate(service)
+
+		err = updateServedVersion(service, service.Config.DefaultDocRoot)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to reset to default document root")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -110,11 +142,13 @@ func resetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http
 			logrus.WithError(storeErr).Error("Failed to update the version store to the PreBundledUIVersion.")
 		}
 
-		err = service.UpdateManager.ResetVersion()
+		err = service.UpdateManager.RemoveVersion(currentVersion)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to remove current version when resetting to default document root")
 		}
 
+		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
 	}
 }

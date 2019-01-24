@@ -4,11 +4,12 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"path/filepath"
+	"os"
 	"testing"
 
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/dcos"
+	"github.com/dcos/dcos-ui-update-service/tests"
 	"github.com/dcos/dcos-ui-update-service/uiService"
 	"github.com/dcos/dcos-ui-update-service/updateManager"
 	"github.com/spf13/afero"
@@ -29,15 +30,16 @@ func TestApplication(t *testing.T) {
 	// Close the listener after this test exits. This triggers the server
 	// to stop running and return an error from Run().
 	defer l.Close()
+	defer tearDown(t)
 	// Start a test server.
 	service := setupTestUIService()
-	service.UIHandler.UpdateDocumentRoot("./testdata/docroot/public")
+
 	go func() {
 		appDoneCh <- service.Run(l)
 	}()
 	// Yay! we're finally ready to perform requests against our server.
 	addr := "http://" + l.Addr().String()
-	resp, err := http.Get(addr + "/static/test.html")
+	resp, err := http.Get(addr + "/api/v1/version/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,14 +52,7 @@ func TestApplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	documentRoot := service.UIHandler.DocumentRoot()
-	exp, err := ioutil.ReadFile(filepath.Join(documentRoot, "test.html"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(got) != string(exp) {
-		t.Fatalf("Expected %q but got %q", string(exp), string(got))
-	}
+	tests.H(t).StringEql(string(got), "Default")
 }
 
 func listen() (net.Listener, error) {
@@ -67,25 +62,31 @@ func listen() (net.Listener, error) {
 
 func setupTestUIService() *uiService.UIService {
 	cfg := config.NewDefaultConfig()
-	cfg.DefaultDocRoot = "./public"
-	cfg.VersionsRoot = "/ui-versions"
+	cfg.DefaultDocRoot = "./testdata/main-sandbox/dcos-ui"
+	cfg.VersionsRoot = "./testdata/main-sandbox/ui-versions"
+	cfg.UIDistSymlink = "./testdata/main-sandbox/dcos-ui-dist"
 	cfg.MasterCountFile = "./fixtures/single-master"
 
 	um, _ := updateManager.NewClient(cfg)
-	um.Fs = afero.NewMemMapFs()
-	um.Fs.MkdirAll("/ui-versions", 0755)
+	um.Fs = afero.NewOsFs()
 
-	uiHandler := uiService.SetupUIHandler(cfg, um)
+	os.MkdirAll(cfg.VersionsRoot, 0755)
+	os.MkdirAll(cfg.DefaultDocRoot, 0755)
+	os.Symlink(cfg.DefaultDocRoot, cfg.UIDistSymlink)
 
 	return &uiService.UIService{
 		Config:        cfg,
 		UpdateManager: um,
-		UIHandler:     uiHandler,
 		MasterCounter: dcos.DCOS{
 			MasterCountLocation: cfg.MasterCountFile,
 		},
 		VersionStore: VersionStoreDouble(),
 	}
+}
+
+func tearDown(t *testing.T) {
+	t.Log("Teardown testdata sandbox")
+	os.RemoveAll("./testdata/main-sandbox")
 }
 
 type fakeVersionStore struct {
