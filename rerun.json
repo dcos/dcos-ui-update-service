@@ -4,9 +4,12 @@
         "-listen-net", "tcp",
         "-listen-addr", "0.0.0.0:5000", 
         "-master-count-file", "./fixtures/single-master",
-        "-default-ui-path", "./public",
+        "-default-ui-path", "/opt/mesosphere/active/dcos-ui",
+        "-ui-dist-symlink", "/opt/mesosphere/active/dcos-ui-dist",
+        "-ui-dist-stage-symlink", "/opt/mesosphere/active/new-dcos-ui-dist",
         "-universe-url", "http://cosmos:7070",
-        "-versions-root", "./versions",       
-        "-zk-addr", "zookeeper:2181"
+        "-versions-root", "/opt/mesosphere/active/versions",       
+        "-zk-addr", "zookeeper:2181",
+        "-init-ui-dist-symlink", "true"
     ]
 }
