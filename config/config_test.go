@@ -32,18 +32,6 @@ func TestConfig(t *testing.T) {
 		tests.H(t).StringEql(cfg.ListenNetAddress, "0.0.0.0:5000")
 	})
 
-	t.Run("default StaticAssetPrefix is correct", func(t *testing.T) {
-		cfg := Parse([]string{})
-
-		tests.H(t).StringEql(cfg.StaticAssetPrefix, defaultAssetPrefix)
-	})
-
-	t.Run("sets StaticAssetPrefix from cli arg", func(t *testing.T) {
-		cfg := Parse([]string{"-" + optAssetPrefix, "/"})
-
-		tests.H(t).StringEql(cfg.StaticAssetPrefix, "/")
-	})
-
 	t.Run("default UniverseURL is correct", func(t *testing.T) {
 		cfg := Parse([]string{})
 
@@ -66,6 +54,30 @@ func TestConfig(t *testing.T) {
 		cfg := Parse([]string{"-" + optDefaultDocRoot, "./testdata/docroot"})
 
 		tests.H(t).StringEql(cfg.DefaultDocRoot, "./testdata/docroot")
+	})
+
+	t.Run("default UIDistSymlink is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).StringEql(cfg.UIDistSymlink, defaultUIDistSymlink)
+	})
+
+	t.Run("sets UIDistSymlink from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optUIDistSymlink, "./testdata/ui-dist"})
+
+		tests.H(t).StringEql(cfg.UIDistSymlink, "./testdata/ui-dist")
+	})
+
+	t.Run("default UIDistSymlink is correct", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).StringEql(cfg.UIDistStageSymlink, defaultUIDistStageSymlink)
+	})
+
+	t.Run("sets UIDistSymlink from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optUIDistStageSymlink, "./testdata/new-ui-dist"})
+
+		tests.H(t).StringEql(cfg.UIDistStageSymlink, "./testdata/new-ui-dist")
 	})
 
 	t.Run("default VersionsRoot is correct", func(t *testing.T) {
@@ -198,5 +210,17 @@ func TestConfig(t *testing.T) {
 		cfg := Parse([]string{"-" + optZKPollingInterval, "20s"})
 
 		tests.H(t).Int64Eql(cfg.ZKPollingInterval.Nanoseconds(), (20 * time.Second).Nanoseconds())
+	})
+
+	t.Run("default InitUIDistSymlink is false", func(t *testing.T) {
+		cfg := Parse([]string{})
+
+		tests.H(t).BoolEql(cfg.InitUIDistSymlink, false)
+	})
+
+	t.Run("sets InitUIDistSymlink from cli arg", func(t *testing.T) {
+		cfg := Parse([]string{"-" + optInitUIDistSymlink, "true"})
+
+		tests.H(t).BoolEql(cfg.InitUIDistSymlink, true)
 	})
 }

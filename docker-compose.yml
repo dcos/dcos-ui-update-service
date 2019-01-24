@@ -8,6 +8,7 @@ services:
       - 5000:5000
     volumes:
       - .:/src
+      - ./testdata/docroot:/opt/mesosphere/active
     command: ["rerun", "-v", "--config=rerun.json"]
   cosmos:
     build:
@@ -28,3 +29,10 @@ services:
       - "2181:2181"
     logging:
       driver: none
+  nginx:
+    image: nginx:latest
+    ports:
+      - 8080:80
+    volumes:
+      - ./testdata/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./testdata/docroot:/opt/mesosphere/active
