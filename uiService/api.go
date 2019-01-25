@@ -113,19 +113,25 @@ func resetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		if currentVersion == "" {
+		if UIVersion(currentVersion) == PreBundledUIVersion {
 			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 			return
 		}
 
-		if _, lockErr := setServiceUpdating(service, ""); lockErr != nil {
-			logrus.WithError(lockErr).Error("Attempted reset while an update was in progress")
+		if updatingVersion, lockErr := setServiceUpdating(service, ""); lockErr != nil {
+			var message string
+			if UIVersion(updatingVersion) == PreBundledUIVersion {
+				message = "Cannot process reset, another reset is currently in progress."
+			} else {
+				message = "Cannot process reset, an update is currently in progress."
+			}
+			logrus.WithError(lockErr).Error(message)
 
 			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte("Cannot reset while an update or reset is in progress"))
+			w.Write([]byte(message))
 			return
 		}
 		defer resetServiceFromUpdate(service)

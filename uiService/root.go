@@ -149,7 +149,7 @@ func handleVersionChange(service *UIService, newVersion string) {
 		}
 		defer resetServiceFromUpdate(service)
 
-		if newVersion == "" {
+		if UIVersion(newVersion) == PreBundledUIVersion {
 			// Reset to Pre-bundled version
 			err = updateServedVersion(service, service.Config.DefaultDocRoot)
 			if err != nil {
