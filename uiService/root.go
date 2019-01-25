@@ -50,6 +50,7 @@ func SetupService(cfg *config.Config) (*UIService, error) {
 	}
 
 	checkUIDistSymlink(cfg)
+	checkVersionsRoot(cfg)
 	checkCurrentVersion(updateManager)
 
 	return service, nil
@@ -108,6 +109,19 @@ func checkCurrentVersion(updateManager *updateManager.Client) {
 	}
 }
 
+func checkVersionsRoot(cfg *config.Config) {
+	logger := logrus.WithFields(logrus.Fields{"VersionsRoot": cfg.VersionsRoot})
+	if _, err := os.Stat(cfg.VersionsRoot); os.IsNotExist(err) {
+		logger.Warn("VersionsRoot directory does not exist, trying to create it.")
+		if mkdirErr := os.MkdirAll(cfg.VersionsRoot, 0755); mkdirErr != nil {
+			logger.WithError(mkdirErr).Error("Failed to create VersionsRoot directory.")
+			return
+		}
+	} else {
+		logger.Info("Current VersionsRoot directory.")
+	}
+}
+
 func registerForVersionChanges(service *UIService) {
 	service.VersionStore.WatchForVersionChange(func(newVersion UIVersion) {
 		handleVersionChange(service, string(newVersion))
@@ -153,7 +167,9 @@ func handleVersionChange(service *UIService, newVersion string) {
 			return
 		}
 
-		err = service.UpdateManager.UpdateToVersion(newVersion, completeVersionUpdate(service))
+		err = service.UpdateManager.UpdateToVersion(newVersion, func(newVersionPath string) error {
+			return updateServedVersion(service, newVersionPath)
+		})
 
 		if err != nil {
 			logrus.WithError(err).WithFields(logrus.Fields{"newVersion": newVersion}).Error("Version sync failed")
@@ -189,12 +205,6 @@ func resetServiceFromUpdate(service *UIService) {
 	service.updatingVersion = ""
 }
 
-func completeVersionUpdate(service *UIService) func(string) error {
-	return func(newVersionPath string) error {
-		return updateServedVersion(service, newVersionPath)
-	}
-}
-
 func updateServedVersion(service *UIService, newVersionPath string) error {
 	// Create temporary symlink
 	if err := os.Symlink(newVersionPath, service.Config.UIDistStageSymlink); err != nil {
@@ -206,7 +216,6 @@ func updateServedVersion(service *UIService, newVersionPath string) error {
 		if removeErr := os.Remove(service.Config.UIDistStageSymlink); removeErr != nil {
 			logrus.WithError(removeErr).Error("Failed to remove new version staged symlink, after failing to swap symlinks for an update.")
 		}
-		// return error
 		return errors.Wrap(err, "unable to swap staged new version symlink with dist symlink")
 	}
 	return nil
