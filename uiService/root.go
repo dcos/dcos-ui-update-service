@@ -129,9 +129,7 @@ func registerForVersionChanges(service *UIService) {
 }
 
 func handleVersionChange(service *UIService, newVersion string) {
-	logrus.WithFields(
-		logrus.Fields{"version": newVersion},
-	).Info("Received version change from version store.")
+	logrus.WithField("newVersion", newVersion).Info("Received version change from version store.")
 	currentLocalVersion, err := service.UpdateManager.CurrentVersion()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to handle version change, error getting the current local version.")
