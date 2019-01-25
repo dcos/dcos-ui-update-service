@@ -46,6 +46,7 @@ func updateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		version := vars["version"]
+		logrus.WithField("version", version).Debug("Received update request.")
 
 		// Check for empty version
 		if len(version) == 0 {
@@ -119,6 +120,7 @@ func resetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http
 			w.Write([]byte("OK"))
 			return
 		}
+		logrus.WithField("CurrentVersion", currentVersion).Debug("Received reset request.")
 
 		if updatingVersion, lockErr := setServiceUpdating(service, ""); lockErr != nil {
 			var message string
