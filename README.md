@@ -1,7 +1,5 @@
 # DC/OS UI Update Service
 
-Requested by Daniel Schmidt
-
 ## Development
 
 ### With docker
@@ -11,12 +9,12 @@ For example `make test` will run linting and tests and it will run all these com
 
 ### Inside docker
 
-You can run the service inside docker by exporting `$CLUSTER_URL`, `$AUTH_TOKEN` and running `make start`
+You can run the service inside docker by exporting `$CLUSTER_URL`, `$AUTH_TOKEN` and running `docker-compose up`
 
 ```bash
 $ export CLUSTER_URL=<path_to_a_cluster>
 $ export AUTH_TOKEN=<token>
-$ make start
+$ docker-compose up
 ```
 
 This will run the service inside docker with [rerun](https://github.com/ivpusic/rerun) that watches for changes and restarts the app when files are saved. By default running in docker will start the service on port 5000 and serve on the same port of your local machine. The rerun arguments can be found in `rerun.json`. We also run a small proxy server to make authenticated calls to cosmos running in your cluster.
