@@ -19,7 +19,7 @@ type Config struct {
 	// The filesystem path where the cluster pre-bundled UI is stored
 	DefaultDocRoot string
 
-	// The filesystem symlink used to server dcos-ui files
+	// The filesystem symlink used to serve dcos-ui files
 	UIDistSymlink string
 
 	// The filesystem path to use for a temporary symlink when updating the ui dist symlink.
