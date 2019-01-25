@@ -113,7 +113,7 @@ func checkVersionsRoot(cfg *config.Config) {
 	logger := logrus.WithFields(logrus.Fields{"VersionsRoot": cfg.VersionsRoot})
 	if _, err := os.Stat(cfg.VersionsRoot); os.IsNotExist(err) {
 		logger.Warn("VersionsRoot directory does not exist, trying to create it.")
-		if mkdirErr := os.MkdirAll(cfg.VersionsRoot, 0755); mkdirErr != nil {
+		if mkdirErr := os.MkdirAll(cfg.VersionsRoot, 0775); mkdirErr != nil {
 			logger.WithError(mkdirErr).Error("Failed to create VersionsRoot directory.")
 			return
 		}
