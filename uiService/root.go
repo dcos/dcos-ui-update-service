@@ -2,9 +2,12 @@ package uiService
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"path"
+	"regexp"
 	"sync"
 
 	"github.com/dcos/dcos-ui-update-service/config"
@@ -217,4 +220,31 @@ func updateServedVersion(service *UIService, newVersionPath string) error {
 		return errors.Wrap(err, "unable to swap staged new version symlink with dist symlink")
 	}
 	return nil
+}
+
+var (
+	// ErrIndexFileNotFound occurs if the provided uiDistPath doesn't contain an index.html file
+	ErrIndexFileNotFound = errors.New("index.html file was not found in the ui dist path")
+	// ErrIndexFileCouldNotBeRead occurs if there is an error reading the index.html file
+	ErrIndexFileCouldNotBeRead = errors.New("index.html file could not be read")
+	// ErrVersionNotFoundInIndex occurs if we can't find the DCOS_UI_VERSION in the ui dist's index.html
+	ErrVersionNotFoundInIndex = errors.New("DCOS_UI_VERSION not found in ui dist's index.html")
+)
+
+func versionFromUIIndex(uiDistPath string) (string, error) {
+	indexFilePath := path.Join(uiDistPath, "index.html")
+	if _, err := os.Stat(indexFilePath); os.IsNotExist(err) {
+		return "", ErrIndexFileNotFound
+	}
+
+	indexFileBytes, err := ioutil.ReadFile(indexFilePath)
+	if err != nil {
+		return "", ErrIndexFileCouldNotBeRead
+	}
+	re := regexp.MustCompile(`window.DCOS_UI_VERSION\s*=\s*["'](?P<version>[\w\d.\-+]+)["'];`)
+	matches := re.FindSubmatch(indexFileBytes)
+	if len(matches) < 2 {
+		return "", ErrVersionNotFoundInIndex
+	}
+	return string(matches[1]), nil
 }

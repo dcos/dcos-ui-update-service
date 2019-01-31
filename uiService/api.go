@@ -37,7 +37,13 @@ func versionHandler(service *UIService) func(http.ResponseWriter, *http.Request)
 		if len(version) > 0 {
 			w.Write([]byte(version))
 		} else {
-			w.Write([]byte("Default"))
+			version, err := versionFromUIIndex(service.Config.UIDistSymlink)
+			if err != nil {
+				logrus.WithError(err).Warn("Failed to read version from UI Dist")
+				w.Write([]byte("Default"))
+			} else {
+				w.Write([]byte(fmt.Sprintf("Default (%s)", version)))
+			}
 		}
 	}
 }
