@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"regexp"
 	"sync"
 
 	"github.com/dcos/dcos-ui-update-service/config"
@@ -139,11 +138,6 @@ func (um *Client) CurrentVersion() (string, error) {
 	}
 
 	currentVersion := path.Base(versionPath)
-
-	// validate `currentVersion` is a version number
-	if match, err := regexp.MatchString(`^\d+\.\d+\.\d+(\.\d+)?$`, currentVersion); err != nil || !match {
-		return "", fmt.Errorf("Expected served version directory to match a semver value, but got %s", currentVersion)
-	}
 
 	logrus.WithFields(logrus.Fields{"currentVersion": currentVersion}).Info("Found current version")
 	// by looking at the dirs for now
