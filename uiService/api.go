@@ -1,6 +1,7 @@
 package uiService
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -24,6 +25,12 @@ func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+type versionResponse struct {
+	Default        bool   `json:"default"`
+	PackageVersion string `json:"packageVersion"`
+	BuildVersion   string `json:"buildVersion"`
+}
+
 func versionHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		version, err := service.UpdateManager.CurrentVersion()
@@ -32,19 +39,25 @@ func versionHandler(service *UIService) func(http.ResponseWriter, *http.Request)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.Header().Add("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		if len(version) > 0 {
-			w.Write([]byte(version))
-		} else {
-			version, err := versionFromUIIndex(service.Config.UIDistSymlink)
-			if err != nil {
-				logrus.WithError(err).Warn("Failed to read version from UI Dist")
-				w.Write([]byte("Default"))
-			} else {
-				w.Write([]byte(fmt.Sprintf("Default (%s)", version)))
-			}
+		buildVersion, err := buildVersionFromUIIndex(service.Config.UIDistSymlink)
+		if err != nil {
+			logrus.WithError(err).Warn("Failed to read version from UI Dist")
+			buildVersion = ""
 		}
+
+		var response versionResponse
+		if len(version) > 0 {
+			response = versionResponse{false, version, buildVersion}
+		} else {
+			response = versionResponse{true, "Default", buildVersion}
+		}
+		js, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(js)
 	}
 }
 

@@ -52,7 +52,7 @@ func TestApplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tests.H(t).StringEql(string(got), "Default")
+	tests.H(t).StringEql(string(got), `{"default":true,"packageVersion":"Default","buildVersion":""}`)
 }
 
 func listen() (net.Listener, error) {

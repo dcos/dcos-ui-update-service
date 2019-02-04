@@ -142,14 +142,14 @@ func TestVersionChange(t *testing.T) {
 func TestVersionFromUIIndex(t *testing.T) {
 	t.Run("reads expected version from ui index.html", func(t *testing.T) {
 		mockDefaultDocRoot := "../testdata/docroot/dcos-ui"
-		version, err := versionFromUIIndex(mockDefaultDocRoot)
+		version, err := buildVersionFromUIIndex(mockDefaultDocRoot)
 		tests.H(t).ErrEql(err, nil)
 
 		tests.H(t).StringEql(version, "0.0.0-dev+mock-UI")
 	})
 	t.Run("returns error if index.html doesnt exist in path", func(t *testing.T) {
 		mockDefaultDocRoot := "../testdata/docroot/versions"
-		_, err := versionFromUIIndex(mockDefaultDocRoot)
+		_, err := buildVersionFromUIIndex(mockDefaultDocRoot)
 		tests.H(t).ErrEql(err, ErrIndexFileNotFound)
 	})
 	t.Run("returns error if version not found in index.html", func(t *testing.T) {
@@ -159,12 +159,12 @@ func TestVersionFromUIIndex(t *testing.T) {
 		tests.H(t).ErrEql(err, nil)
 		err = ioutil.WriteFile(
 			path.Join(sandboxPath, "index.html"),
-			[]byte("<html></html"),
+			[]byte("<html></html>"),
 			0775,
 		)
 		tests.H(t).ErrEql(err, nil)
 
-		_, err = versionFromUIIndex(sandboxPath)
+		_, err = buildVersionFromUIIndex(sandboxPath)
 		tests.H(t).ErrEql(err, ErrVersionNotFoundInIndex)
 	})
 }
