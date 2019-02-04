@@ -231,7 +231,7 @@ var (
 	ErrVersionNotFoundInIndex = errors.New("DCOS_UI_VERSION not found in ui dist's index.html")
 )
 
-func versionFromUIIndex(uiDistPath string) (string, error) {
+func buildVersionFromUIIndex(uiDistPath string) (string, error) {
 	indexFilePath := path.Join(uiDistPath, "index.html")
 	if _, err := os.Stat(indexFilePath); os.IsNotExist(err) {
 		return "", ErrIndexFileNotFound
