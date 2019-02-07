@@ -192,7 +192,7 @@ func TestClientCurrentVersion(t *testing.T) {
 		tests.H(t).StringContains(err.Error(), "Expected served version directory to be `dist` but got")
 	})
 
-	t.Run("returns error if there are more than one directory in VersionPath", func(t *testing.T) {
+	t.Run("returns version even if its not semver", func(t *testing.T) {
 		// Setup bad version
 		os.MkdirAll("../testdata/um-sandbox/ui-versions/not_semver/dist", 0755)
 		os.MkdirAll("../testdata/um-sandbox/dcos-ui", 0755)
@@ -218,9 +218,10 @@ func TestClientCurrentVersion(t *testing.T) {
 			Fs:     fs,
 		}
 
-		_, err := loader.CurrentVersion()
+		version, err := loader.CurrentVersion()
 
-		tests.H(t).StringContains(err.Error(), "Expected served version directory to match a semver value, but got")
+		tests.H(t).ErrEql(err, nil)
+		tests.H(t).StringEql(version, "not_semver")
 	})
 }
 func TestClientPathToCurrentVersion(t *testing.T) {
