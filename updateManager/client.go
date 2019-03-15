@@ -120,6 +120,7 @@ func (um *Client) loadVersion(version string, targetDirectory string) error {
 
 // CurrentVersion retrieves the current version being served
 func (um *Client) CurrentVersion() (string, error) {
+	// Locking here so we don't try to read the version while updating
 	um.Lock()
 	defer um.Unlock()
 
