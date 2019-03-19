@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -119,6 +120,9 @@ func Parse(args []string) (*Config, error) {
 	}
 
 	if err := fs.Parse(args); err != nil {
+		if err == pflag.ErrHelp {
+			os.Exit(0)
+		}
 		return nil, err
 	}
 
