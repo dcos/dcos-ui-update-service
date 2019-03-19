@@ -61,24 +61,26 @@ func listen() (net.Listener, error) {
 }
 
 func setupTestUIService() *uiService.UIService {
-	cfg := config.NewDefaultConfig()
-	cfg.DefaultDocRoot = "./testdata/main-sandbox/dcos-ui"
-	cfg.VersionsRoot = "./testdata/main-sandbox/ui-versions"
-	cfg.UIDistSymlink = "./testdata/main-sandbox/dcos-ui-dist"
-	cfg.MasterCountFile = "./fixtures/single-master"
+	cfg, _ := config.Parse([]string{
+		"--default-ui-path", "../testdata/uiserv-sandbox/dcos-ui",
+		"--versions-root", "../testdata/uiserv-sandbox/ui-versions",
+		"--ui-dist-symlink", "../testdata/uiserv-sandbox/dcos-ui-dist",
+		"--ui-dist-stage-symlink", "../testdata/uiserv-sandbox/new-dcos-ui-dist",
+		"--master-count-file", "../fixtures/single-master",
+	})
 
 	um, _ := updateManager.NewClient(cfg)
 	um.Fs = afero.NewOsFs()
 
-	os.MkdirAll(cfg.VersionsRoot, 0755)
-	os.MkdirAll(cfg.DefaultDocRoot, 0755)
-	os.Symlink(cfg.DefaultDocRoot, cfg.UIDistSymlink)
+	os.MkdirAll(cfg.VersionsRoot(), 0755)
+	os.MkdirAll(cfg.DefaultDocRoot(), 0755)
+	os.Symlink(cfg.DefaultDocRoot(), cfg.UIDistSymlink())
 
 	return &uiService.UIService{
 		Config:        cfg,
 		UpdateManager: um,
 		MasterCounter: dcos.DCOS{
-			MasterCountLocation: cfg.MasterCountFile,
+			MasterCountLocation: cfg.MasterCountFile(),
 		},
 		VersionStore: VersionStoreDouble(),
 	}

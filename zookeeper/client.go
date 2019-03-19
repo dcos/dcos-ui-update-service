@@ -70,12 +70,12 @@ var (
 // Connect creates and initializes a zookeeper client
 func Connect(cfg *config.Config) (*Client, error) {
 	return connect(zkConfig{
-		BasePath:       cfg.ZKBasePath,
-		ZnodeOwner:     cfg.ZKZnodeOwner,
-		AuthInfo:       cfg.ZKAuthInfo,
-		Address:        cfg.ZKAddress,
-		SessionTimeout: cfg.ZKSessionTimeout,
-		ConnectTimeout: cfg.ZKConnectionTimeout,
+		BasePath:       cfg.ZKBasePath(),
+		ZnodeOwner:     cfg.ZKZnodeOwner(),
+		AuthInfo:       cfg.ZKAuthInfo(),
+		Address:        cfg.ZKAddress(),
+		SessionTimeout: cfg.ZKSessionTimeout(),
+		ConnectTimeout: cfg.ZKConnectionTimeout(),
 	})
 }
 

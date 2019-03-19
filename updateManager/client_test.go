@@ -85,10 +85,12 @@ func TestClientCurrentVersion(t *testing.T) {
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
+
 		fs := afero.NewOsFs()
 
 		loader := Client{
@@ -114,10 +116,11 @@ func TestClientCurrentVersion(t *testing.T) {
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-bad"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-bad",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		loader := Client{
@@ -142,10 +145,11 @@ func TestClientCurrentVersion(t *testing.T) {
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		loader := Client{
@@ -174,10 +178,11 @@ func TestClientCurrentVersion(t *testing.T) {
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		loader := Client{
@@ -205,10 +210,11 @@ func TestClientCurrentVersion(t *testing.T) {
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		loader := Client{
@@ -235,10 +241,11 @@ func TestClientPathToCurrentVersion(t *testing.T) {
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		loader := Client{
@@ -264,10 +271,11 @@ func TestClientPathToCurrentVersion(t *testing.T) {
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-bad"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-bad",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		loader := Client{
@@ -290,8 +298,9 @@ func TestClientRemoveVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "/ui-versions"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "/ui-versions",
+		})
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
@@ -318,8 +327,9 @@ func TestClientRemoveVersion(t *testing.T) {
 		// Close the server when test finishes
 		defer server.Close()
 		fs := afero.NewMemMapFs()
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "/ui-versions"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "/ui-versions",
+		})
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
@@ -364,10 +374,11 @@ func TestClientUpdateToVersion(t *testing.T) {
 
 		fs := afero.NewOsFs()
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 
 		cosmosURL, _ := url.Parse(server.URL)
 		cosmos := cosmos.NewClient(cosmosURL)
@@ -385,14 +396,14 @@ func TestClientUpdateToVersion(t *testing.T) {
 			t.Fatalf("Expected no error, got %#v", err)
 		}
 
-		newVersionPath := path.Join(cfg.VersionsRoot, "2.25.2")
+		newVersionPath := path.Join(cfg.VersionsRoot(), "2.25.2")
 		newVersionExists, err := afero.DirExists(fs, newVersionPath)
 
 		if !newVersionExists || err != nil {
 			t.Fatalf("Expected new directory to exist, got %t, %#v", newVersionExists, err)
 		}
 
-		files, err := afero.ReadDir(fs, cfg.VersionsRoot)
+		files, err := afero.ReadDir(fs, cfg.VersionsRoot())
 
 		tests.H(t).ErrEql(err, nil)
 
@@ -426,10 +437,11 @@ func TestClientUpdateToVersion(t *testing.T) {
 		defer tearDown(t)
 		setupServingDefault(t)
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
@@ -464,10 +476,11 @@ func TestClientUpdateToVersion(t *testing.T) {
 		defer tearDown(t)
 		setupServingDefault(t)
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
@@ -510,10 +523,11 @@ func TestClientUpdateToVersion(t *testing.T) {
 		defer tearDown(t)
 		setupServingSpecificVersion(t, "2.25.1")
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
@@ -530,8 +544,8 @@ func TestClientUpdateToVersion(t *testing.T) {
 
 		tests.H(t).ErrEql(err, nil)
 
-		newVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot, "/2.25.2"))
-		oldVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot, "/2.25.1"))
+		newVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot(), "/2.25.2"))
+		oldVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot(), "/2.25.1"))
 
 		tests.H(t).BoolEqlWithMessage(newVersionExists, true, "Expected new directoy to exist on failure")
 		tests.H(t).BoolEqlWithMessage(oldVersionExists, false, "Expected old directoy to be removed")
@@ -554,10 +568,11 @@ func TestClientUpdateToVersion(t *testing.T) {
 		defer tearDown(t)
 		setupServingSpecificVersion(t, "2.25.1")
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
@@ -598,10 +613,11 @@ func TestClientUpdateToVersion(t *testing.T) {
 		defer tearDown(t)
 		setupServingSpecificVersion(t, "2.25.1")
 
-		cfg := config.NewDefaultConfig()
-		cfg.VersionsRoot = "../testdata/um-sandbox/ui-versions"
-		cfg.UIDistSymlink = "../testdata/um-sandbox/dcos-ui-dist"
-		cfg.DefaultDocRoot = "../testdata/um-sandbox/dcos-ui"
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "../testdata/um-sandbox/ui-versions",
+			"--ui-dist-symlink", "../testdata/um-sandbox/dcos-ui-dist",
+			"--default-ui-path", "../testdata/um-sandbox/dcos-ui",
+		})
 		fs := afero.NewOsFs()
 
 		cosmosURL, _ := url.Parse(server.URL)
@@ -617,8 +633,8 @@ func TestClientUpdateToVersion(t *testing.T) {
 
 		tests.H(t).ErrEql(err, downloader.ErrDowloadPackageFailed)
 
-		newVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot, "/2.25.2"))
-		oldVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot, "/2.25.1"))
+		newVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot(), "/2.25.2"))
+		oldVersionExists, _ := afero.DirExists(fs, path.Join(cfg.VersionsRoot(), "/2.25.1"))
 
 		tests.H(t).BoolEqlWithMessage(newVersionExists, false, "Expected new directoy to be removed on failure")
 		tests.H(t).BoolEqlWithMessage(oldVersionExists, true, "Expected old directoy to not be removed")

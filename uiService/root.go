@@ -40,7 +40,7 @@ func SetupService(cfg *config.Config) (*UIService, error) {
 		return nil, errors.Wrap(err, "failed to create update manager")
 	}
 	dcos := dcos.DCOS{
-		MasterCountLocation: cfg.MasterCountFile,
+		MasterCountLocation: cfg.MasterCountFile(),
 	}
 
 	versionStore := NewZKVersionStore(cfg)
@@ -69,18 +69,18 @@ func (service *UIService) Run(l net.Listener) error {
 }
 
 func checkUIDistSymlink(cfg *config.Config) {
-	uiDistTarget, err := os.Readlink(cfg.UIDistSymlink)
+	uiDistTarget, err := os.Readlink(cfg.UIDistSymlink())
 	if err != nil {
-		if cfg.InitUIDistSymlink {
+		if cfg.InitUIDistSymlink() {
 			logrus.Info("Attempting to initialize UI dist symlink")
-			createErr := os.Symlink(cfg.DefaultDocRoot, cfg.UIDistSymlink)
+			createErr := os.Symlink(cfg.DefaultDocRoot(), cfg.UIDistSymlink())
 			if createErr != nil {
 				logrus.WithError(createErr).Error("Failed to initialize UI dist symlink")
 			} else {
 				logrus.WithFields(
 					logrus.Fields{
-						"UIDistSymlink":        cfg.UIDistSymlink,
-						"UIDistSymlink-Target": cfg.DefaultDocRoot,
+						"UIDistSymlink":        cfg.UIDistSymlink(),
+						"UIDistSymlink-Target": cfg.DefaultDocRoot(),
 					},
 				).Info("Current UI dist symlink target.")
 			}
@@ -90,7 +90,7 @@ func checkUIDistSymlink(cfg *config.Config) {
 	} else {
 		logrus.WithFields(
 			logrus.Fields{
-				"UIDistSymlink":        cfg.UIDistSymlink,
+				"UIDistSymlink":        cfg.UIDistSymlink(),
 				"UIDistSymlink-Target": uiDistTarget,
 			},
 		).Info("Current UI dist symlink target")
@@ -113,10 +113,10 @@ func checkCurrentVersion(updateManager *updateManager.Client) {
 }
 
 func checkVersionsRoot(cfg *config.Config) {
-	logger := logrus.WithFields(logrus.Fields{"VersionsRoot": cfg.VersionsRoot})
-	if _, err := os.Stat(cfg.VersionsRoot); os.IsNotExist(err) {
+	logger := logrus.WithFields(logrus.Fields{"VersionsRoot": cfg.VersionsRoot()})
+	if _, err := os.Stat(cfg.VersionsRoot()); os.IsNotExist(err) {
 		logger.Warn("VersionsRoot directory does not exist, trying to create it.")
-		if mkdirErr := os.MkdirAll(cfg.VersionsRoot, 0775); mkdirErr != nil {
+		if mkdirErr := os.MkdirAll(cfg.VersionsRoot(), 0775); mkdirErr != nil {
 			logger.WithError(mkdirErr).Error("Failed to create VersionsRoot directory.")
 			return
 		}
@@ -152,7 +152,7 @@ func handleVersionChange(service *UIService, newVersion string) {
 
 		if UIVersion(newVersion) == PreBundledUIVersion {
 			// Reset to Pre-bundled version
-			err = updateServedVersion(service, service.Config.DefaultDocRoot)
+			err = updateServedVersion(service, service.Config.DefaultDocRoot())
 			if err != nil {
 				logrus.WithError(err).Error("Failed to reset to default document root.")
 				return
@@ -208,13 +208,13 @@ func resetServiceFromUpdate(service *UIService) {
 
 func updateServedVersion(service *UIService, newVersionPath string) error {
 	// Create temporary symlink
-	if err := os.Symlink(newVersionPath, service.Config.UIDistStageSymlink); err != nil {
+	if err := os.Symlink(newVersionPath, service.Config.UIDistStageSymlink()); err != nil {
 		return errors.Wrap(err, "unable to create temporary staging symlink for new version")
 	}
 	// Swap serving symlink with temp
-	if err := os.Rename(service.Config.UIDistStageSymlink, service.Config.UIDistSymlink); err != nil {
+	if err := os.Rename(service.Config.UIDistStageSymlink(), service.Config.UIDistSymlink()); err != nil {
 		// remove/unlink temporary symlink
-		if removeErr := os.Remove(service.Config.UIDistStageSymlink); removeErr != nil {
+		if removeErr := os.Remove(service.Config.UIDistStageSymlink()); removeErr != nil {
 			logrus.WithError(removeErr).Error("Failed to remove new version staged symlink, after failing to swap symlinks for an update.")
 		}
 		return errors.Wrap(err, "unable to swap staged new version symlink with dist symlink")

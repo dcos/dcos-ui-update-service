@@ -58,11 +58,11 @@ func NewZKVersionStore(cfg *config.Config) VersionStore {
 			currentVersion: PreBundledUIVersion,
 			initialized:    false,
 		},
-		zkBasePath:  cfg.ZKBasePath,
-		versionPath: makeVersionPath(cfg.ZKBasePath),
+		zkBasePath:  cfg.ZKBasePath(),
+		versionPath: makeVersionPath(cfg.ZKBasePath()),
 		watchState: versionWatchState{
 			active:          false,
-			pollingInterval: cfg.ZKPollingInterval,
+			pollingInterval: cfg.ZKPollingInterval(),
 		},
 	}
 	go store.connectAndInitZKAsync(cfg)

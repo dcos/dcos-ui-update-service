@@ -57,7 +57,7 @@ type UpdateManager interface {
 
 // NewClient creates a new instance of Client
 func NewClient(cfg *config.Config) (*Client, error) {
-	universeURL, err := url.Parse(cfg.UniverseURL)
+	universeURL, err := url.Parse(cfg.UniverseURL())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse configured Universe URL")
 	}
@@ -123,12 +123,12 @@ func (um *Client) CurrentVersion() (string, error) {
 	um.Lock()
 	defer um.Unlock()
 
-	servedVersionPath, err := os.Readlink(um.Config.UIDistSymlink)
+	servedVersionPath, err := os.Readlink(um.Config.UIDistSymlink())
 	if err != nil {
 		return "", ErrUIDistSymlinkNotFound
 	}
 
-	if servedVersionPath == um.Config.DefaultDocRoot {
+	if servedVersionPath == um.Config.DefaultDocRoot() {
 		return "", nil
 	}
 
@@ -147,7 +147,7 @@ func (um *Client) CurrentVersion() (string, error) {
 // PathToCurrentVersion return the filesystem path to the current UI version
 // or returns an error is the current version cannot be determined
 func (um *Client) PathToCurrentVersion() (string, error) {
-	servedVersionPath, err := os.Readlink(um.Config.UIDistSymlink)
+	servedVersionPath, err := os.Readlink(um.Config.UIDistSymlink())
 	if err != nil {
 		return "", ErrUIDistSymlinkNotFound
 	}
@@ -172,7 +172,7 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 	um.Lock()
 	defer um.Unlock()
 
-	if exists, err := afero.DirExists(um.Fs, um.Config.VersionsRoot); err != nil || !exists {
+	if exists, err := afero.DirExists(um.Fs, um.Config.VersionsRoot()); err != nil || !exists {
 		if err != nil {
 			logrus.WithError(err).Error("DirExists check for VersionsRoot failed")
 		} else {
@@ -182,7 +182,7 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 		return ErrVersionsPathDoesNotExist
 	}
 
-	targetDir := path.Join(um.Config.VersionsRoot, version)
+	targetDir := path.Join(um.Config.VersionsRoot(), version)
 	// Create directory for next version
 	err := um.Fs.MkdirAll(targetDir, 0755)
 	if err != nil {
@@ -216,7 +216,7 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 }
 
 func (um *Client) RemoveVersion(version string) error {
-	versionPath := path.Join(um.Config.VersionsRoot, version)
+	versionPath := path.Join(um.Config.VersionsRoot(), version)
 	if exists, err := afero.DirExists(um.Fs, versionPath); err != nil || !exists {
 		if err != nil {
 			logrus.WithError(err).Error("RemoveVersion failed, version path check failed.")
