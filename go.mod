@@ -17,15 +17,13 @@ require (
 	github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644 // indirect
 	github.com/sirupsen/logrus v1.2.0
 	github.com/spf13/afero v1.1.2
+	github.com/spf13/pflag v1.0.3
+	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.2.2
 	github.com/tidwall/gjson v1.1.3
 	github.com/tidwall/match v0.0.0-20171002075945-1731857f09b1 // indirect
-	golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e // indirect
 	golang.org/x/net v0.0.0-20181114220301-adae6a3d119a
-	golang.org/x/sys v0.0.0-20180928133829-e4b3c5e90611 // indirect
-	golang.org/x/text v0.3.0 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/square/go-jose.v2 v2.1.9 // indirect
-	gopkg.in/yaml.v2 v2.2.1 // indirect
 )

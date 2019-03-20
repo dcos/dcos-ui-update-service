@@ -74,7 +74,7 @@ func TestRouter(t *testing.T) {
 		}
 		defer tearDown(t)
 		service := setupTestUIService()
-		newVersionPath := path.Join(path.Join(service.Config.VersionsRoot, "2.24.4"), "dist")
+		newVersionPath := path.Join(path.Join(service.Config.VersionsRoot(), "2.24.4"), "dist")
 		os.MkdirAll(newVersionPath, 0755)
 
 		um := UpdateManagerDouble()
@@ -96,7 +96,7 @@ func TestRouter(t *testing.T) {
 		defer tearDown(t)
 		service := setupTestUIService()
 
-		newVersionPath := path.Join(path.Join(service.Config.VersionsRoot, "2.24.4"), "dist")
+		newVersionPath := path.Join(path.Join(service.Config.VersionsRoot(), "2.24.4"), "dist")
 		os.MkdirAll(newVersionPath, 0755)
 
 		um := UpdateManagerDouble()
@@ -157,7 +157,7 @@ func TestRouter(t *testing.T) {
 		defer tearDown(t)
 		service := setupTestUIService()
 
-		newVersionPath := path.Join(path.Join(service.Config.VersionsRoot, "2.24.4"), "dist")
+		newVersionPath := path.Join(path.Join(service.Config.VersionsRoot(), "2.24.4"), "dist")
 		os.MkdirAll(newVersionPath, 0755)
 
 		um := UpdateManagerDouble()

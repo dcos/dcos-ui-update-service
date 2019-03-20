@@ -1,52 +1,23 @@
 package config
 
 import (
-	"flag"
+	"fmt"
 	"os"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 // Config holds the configuration vaules needed for the Application
 type Config struct {
-	HTTPClientTimeout time.Duration
-
-	ListenNetProtocol string
-
-	ListenNetAddress string
-
-	UniverseURL string
-
-	// The filesystem path where the cluster pre-bundled UI is stored
-	DefaultDocRoot string
-
-	// The filesystem symlink used to serve dcos-ui files
-	UIDistSymlink string
-
-	// The filesystem path to use for a temporary symlink when updating the ui dist symlink.
-	UIDistStageSymlink string
-
-	// The filesystem path where downloaded versions are stored
-	VersionsRoot string
-
-	// The filesystem path where the file determining the master count is
-	MasterCountFile string
-
-	LogLevel string
-	// Zookeeper configuration options
-	ZKAddress           string
-	ZKBasePath          string
-	ZKAuthInfo          string
-	ZKZnodeOwner        string
-	ZKSessionTimeout    time.Duration
-	ZKConnectionTimeout time.Duration
-	ZKPollingInterval   time.Duration
-
-	// If we should init the UIDistSymlink if it doesn't exist, defaults to false and should only be used for local dev
-	InitUIDistSymlink bool
+	viper *viper.Viper
 }
 
 // Default values for config files
 const (
+	defaultConfig             = ""
 	defaultHTTPClientTimeout  = 5 * time.Second
 	defaultListenNet          = "unix"
 	defaultListenAddr         = "/run/dcos/dcos-ui-update-service.sock"
@@ -68,6 +39,7 @@ const (
 )
 
 const (
+	optConfig             = "config"
 	optDefaultDocRoot     = "default-ui-path"
 	optUIDistSymlink      = "ui-dist-symlink"
 	optUIDistStageSymlink = "ui-dist-stage-symlink"
@@ -88,88 +60,173 @@ const (
 	optInitUIDistSymlink  = "init-ui-dist-symlink"
 )
 
-func NewDefaultConfig() *Config {
-	// Don't use keyed literals so we get errors at compile time when new
-	// config fields get added.
-	return &Config{
-		defaultHTTPClientTimeout,
-		defaultListenNet,
-		defaultListenAddr,
-		defaultUniverseURL,
-		defaultDefaultDocRoot,
-		defaultUIDistSymlink,
-		defaultUIDistStageSymlink,
-		defaultVersionsRoot,
-		defaultMasterCountFile,
-		defaultLogLevel,
-		defaultZKAddress,
-		defaultZKBasePath,
-		defaultZKAuthInfo,
-		defaultZKZnodeOwner,
-		defaultZKSessionTimeout,
-		defaultZKConnectTimeout,
-		defaultZKPollingInterval,
-		defaultInitUIDistSymlink,
-	}
-}
-
-func replaceEnvVariables(args []string) []string {
-	result := make([]string, len(args))
-	for i, arg := range args {
-		if arg[0] == '$' {
-			result[i] = os.Getenv(arg[1:])
-		} else {
-			result[i] = arg
-		}
-	}
-	return result
-}
-
-func Parse(args []string) *Config {
-	cfg := NewDefaultConfig()
-	args = replaceEnvVariables(args)
-
-	cliArgs := flag.NewFlagSet("cli-args", flag.ContinueOnError)
-	cliArgs.StringVar(
-		&cfg.ListenNetProtocol,
-		optListenNet,
-		cfg.ListenNetProtocol,
-		"The transport type on which to listen for connections. May be one of 'tcp', 'unix'.",
-	)
-	cliArgs.StringVar(&cfg.ListenNetAddress, optListenAddress, cfg.ListenNetAddress, "The network address at which to listen for connections.")
-	cliArgs.StringVar(&cfg.UniverseURL, optUniverseURL, cfg.UniverseURL, "The URL where universe can be reached.")
-	cliArgs.StringVar(
-		&cfg.DefaultDocRoot,
-		optDefaultDocRoot,
-		cfg.DefaultDocRoot,
-		"The filesystem path with the default ui distribution (pre-bundled ui).",
-	)
-	cliArgs.StringVar(
-		&cfg.UIDistSymlink,
-		optUIDistSymlink,
-		cfg.UIDistSymlink,
-		"The filesystem symlink path where the ui distributed files are served from.",
-	)
-	cliArgs.StringVar(
-		&cfg.UIDistStageSymlink,
+func defineFlags(viper *viper.Viper) (*pflag.FlagSet, error) {
+	fs := &pflag.FlagSet{}
+	fs.String(optConfig, defaultConfig, "The path to the optional config file")
+	fs.String(optListenNet, defaultListenNet, "The transport type on which to listen for connections. May be one of 'tcp', 'unix'.")
+	fs.String(optListenAddress, defaultListenAddr, "The network address at which to listen for connections.")
+	fs.String(optUniverseURL, defaultUniverseURL, "The URL where universe can be reached.")
+	fs.String(optDefaultDocRoot, defaultDefaultDocRoot, "The filesystem path with the default ui distribution (pre-bundled ui).")
+	fs.String(optUIDistSymlink, defaultUIDistSymlink, "The filesystem symlink path where the ui distributed files are served from.")
+	fs.String(
 		optUIDistStageSymlink,
-		cfg.UIDistStageSymlink,
+		defaultUIDistStageSymlink,
 		"The temporary filesystem symlink path that links to where the ui distribution files are located.",
 	)
-	cliArgs.StringVar(&cfg.VersionsRoot, optVersionsRoot, cfg.VersionsRoot, "The filesystem path where downloaded versions are stored.")
-	cliArgs.StringVar(&cfg.MasterCountFile, optMasterCountFile, cfg.MasterCountFile, "The filesystem path to the file determining the master count.")
-	cliArgs.StringVar(&cfg.LogLevel, optLogLevel, cfg.LogLevel, "The output logging level.")
-	cliArgs.DurationVar(&cfg.HTTPClientTimeout, optHTTPClientTimeout, cfg.HTTPClientTimeout, "The default http client timeout for requests.")
-	cliArgs.StringVar(&cfg.ZKAddress, optZKAddress, cfg.ZKAddress, "The Zookeeper address this client will connect to.")
-	cliArgs.StringVar(&cfg.ZKBasePath, optZKBasePath, cfg.ZKBasePath, "The path of the root zookeeper znode.")
-	cliArgs.StringVar(&cfg.ZKAuthInfo, optZKAuthInfo, cfg.ZKAuthInfo, "Authentication details for zookeeper.")
-	cliArgs.StringVar(&cfg.ZKZnodeOwner, optZKZnodeOwner, cfg.ZKZnodeOwner, "The ZK owner of the base path.")
-	cliArgs.DurationVar(&cfg.ZKSessionTimeout, optZKSessionTimeout, cfg.ZKSessionTimeout, "ZK session timeout.")
-	cliArgs.DurationVar(&cfg.ZKConnectionTimeout, optZKConnectTimeout, cfg.ZKConnectionTimeout, "Timeout to establish initial zookeeper connection.")
-	cliArgs.DurationVar(&cfg.ZKPollingInterval, optZKPollingInterval, cfg.ZKPollingInterval, "Interval to check zookeeper node for version updates.")
-	cliArgs.BoolVar(&cfg.InitUIDistSymlink, optInitUIDistSymlink, cfg.InitUIDistSymlink, "Initialize the UI dist symlink if missing")
+	fs.String(optVersionsRoot, defaultVersionsRoot, "The filesystem path where downloaded versions are stored.")
+	fs.String(optMasterCountFile, defaultMasterCountFile, "The filesystem path to the file determining the master count.")
+	fs.String(optLogLevel, defaultLogLevel, "The output logging level.")
+	fs.Duration(optHTTPClientTimeout, defaultHTTPClientTimeout, "The default http client timeout for requests.")
+	fs.String(optZKAddress, defaultZKAddress, "The Zookeeper address this client will connect to.")
+	fs.String(optZKBasePath, defaultZKBasePath, "The path of the root zookeeper znode.")
+	fs.String(optZKAuthInfo, defaultZKAuthInfo, "Authentication details for zookeeper.")
+	fs.String(optZKZnodeOwner, defaultZKZnodeOwner, "The ZK owner of the base path.")
+	fs.Duration(optZKSessionTimeout, defaultZKSessionTimeout, "ZK session timeout.")
+	fs.Duration(optZKConnectTimeout, defaultZKConnectTimeout, "Timeout to establish initial zookeeper connection.")
+	fs.Duration(optZKPollingInterval, defaultZKPollingInterval, "Interval to check zookeeper node for version updates.")
+	fs.Bool(optInitUIDistSymlink, defaultInitUIDistSymlink, "Initialize the UI dist symlink if missing")
 
-	cliArgs.Parse(args)
+	viper.BindEnv(optListenAddress, "DCOS_UI_UPDATE_LISTEN_ADDR")
+	viper.BindEnv(optDefaultDocRoot, "DCOS_UI_UPDATE_DEFAULT_UI_PATH")
+	viper.BindEnv(optVersionsRoot, "DCOS_UI_UPDATE_VERSIONS_ROOT")
+	viper.BindEnv(optUIDistSymlink, "DCOS_UI_UPDATE_DIST_LINK")
+	viper.BindEnv(optUIDistStageSymlink, "DCOS_UI_UPDATE_STAGE_LINK")
+	viper.BindEnv(optZKAuthInfo, "DCOS_UI_UPDATE_ZK_AUTH_INFO")
+	viper.BindEnv(optZKZnodeOwner, "DCOS_UI_UPDATE_ZK_ZKNODE_OWNER")
 
-	return cfg
+	if err := viper.BindPFlags(fs); err != nil {
+		return nil, errors.Wrap(err, "Could not bind PFlags")
+	}
+
+	return fs, nil
+}
+
+// NewDefaultConfig returns a default configuration without runtime config used
+func NewDefaultConfig() *Config {
+	defaults, err := Parse(nil)
+	if err != nil {
+		// This should never happen
+		panic(err)
+	}
+	return defaults
+}
+
+// Parse parses configuration from CLI arguments, environment variables, or config file
+func Parse(args []string) (*Config, error) {
+	viper := viper.New()
+	fs, err := defineFlags(viper)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := fs.Parse(args); err != nil {
+		if err == pflag.ErrHelp {
+			os.Exit(0)
+		}
+		return nil, err
+	}
+
+	if path := viper.GetString(optConfig); path != "" {
+		viper.SetConfigFile(path)
+		if err := viper.ReadInConfig(); err != nil {
+			return nil, fmt.Errorf("Could not read config file: %s", err)
+		}
+	}
+
+	return &Config{viper}, nil
+}
+
+// ConfigFilePath is the path of the config file to load config settings from
+func (c Config) ConfigFilePath() string {
+	return c.viper.GetString(optConfig)
+}
+
+// HTTPClientTimeout is the default http client timeout for requests
+func (c Config) HTTPClientTimeout() time.Duration {
+	return c.viper.GetDuration(optHTTPClientTimeout)
+}
+
+// ListenNetProtocol is the transport type on which to listen for connections. May be one of 'tcp', 'unix'
+func (c Config) ListenNetProtocol() string {
+	return c.viper.GetString(optListenNet)
+}
+
+// ListenNetAddress is the network address at which to listen for connections
+func (c Config) ListenNetAddress() string {
+	return c.viper.GetString(optListenAddress)
+}
+
+// UniverseURL is the URL where the universe package repository can be reached
+func (c Config) UniverseURL() string {
+	return c.viper.GetString(optUniverseURL)
+}
+
+// DefaultDocRoot is the filesystem path where the cluster pre-bundled UI is stored
+func (c Config) DefaultDocRoot() string {
+	return c.viper.GetString(optDefaultDocRoot)
+}
+
+// UIDistSymlink is the filesystem symlink used to serve dcos-ui files
+func (c Config) UIDistSymlink() string {
+	return c.viper.GetString(optUIDistSymlink)
+}
+
+// UIDistStageSymlink is the filesystem path to use for a temporary symlink when updating the ui dist symlink
+func (c Config) UIDistStageSymlink() string {
+	return c.viper.GetString(optUIDistStageSymlink)
+}
+
+// VersionsRoot is the filesystem path where downloaded versions are stored
+func (c Config) VersionsRoot() string {
+	return c.viper.GetString(optVersionsRoot)
+}
+
+// MasterCountFile is the filesystem path where the file determining the master count is
+func (c Config) MasterCountFile() string {
+	return c.viper.GetString(optMasterCountFile)
+}
+
+// LogLevel is the minimum logging level to output
+func (c Config) LogLevel() string {
+	return c.viper.GetString(optLogLevel)
+}
+
+// ZKAddress is the host:port to which the zookeeper client will connect
+func (c Config) ZKAddress() string {
+	return c.viper.GetString(optZKAddress)
+}
+
+// ZKBasePath is the path of the base zookeeper znode
+func (c Config) ZKBasePath() string {
+	return c.viper.GetString(optZKBasePath)
+}
+
+// ZKAuthInfo contains the details of how to authenticate to zookeeper
+func (c Config) ZKAuthInfo() string {
+	return c.viper.GetString(optZKAuthInfo)
+}
+
+// ZKZnodeOwner is the ZK owner of the base path
+func (c Config) ZKZnodeOwner() string {
+	return c.viper.GetString(optZKZnodeOwner)
+}
+
+// ZKSessionTimeout is the session timeout to ZK
+func (c Config) ZKSessionTimeout() time.Duration {
+	return c.viper.GetDuration(optZKSessionTimeout)
+}
+
+// ZKConnectionTimeout is the timeout to establish the initial ZK connection
+func (c Config) ZKConnectionTimeout() time.Duration {
+	return c.viper.GetDuration(optZKConnectTimeout)
+}
+
+// ZKPollingInterval is the interval used for polling ZK to detect state changes
+func (c Config) ZKPollingInterval() time.Duration {
+	return c.viper.GetDuration(optZKPollingInterval)
+}
+
+// InitUIDistSymlink is whether the UIDistSymlink should be initialized if it doesn't exist, defaults to false and should only be used for local dev
+func (c Config) InitUIDistSymlink() bool {
+	return c.viper.GetBool(optInitUIDistSymlink)
 }

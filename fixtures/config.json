@@ -1,0 +1,4 @@
+{
+    "listen-addr": "255.255.255.1:3000",
+    "listen-net": "tcp"
+}

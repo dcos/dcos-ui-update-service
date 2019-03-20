@@ -39,7 +39,7 @@ func versionHandler(service *UIService) func(http.ResponseWriter, *http.Request)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		buildVersion, err := buildVersionFromUIIndex(service.Config.UIDistSymlink)
+		buildVersion, err := buildVersionFromUIIndex(service.Config.UIDistSymlink())
 		if err != nil {
 			logrus.WithError(err).Warn("Failed to read version from UI Dist")
 			buildVersion = ""
@@ -157,7 +157,7 @@ func resetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http
 		}
 		defer resetServiceFromUpdate(service)
 
-		err = updateServedVersion(service, service.Config.DefaultDocRoot)
+		err = updateServedVersion(service, service.Config.DefaultDocRoot())
 		if err != nil {
 			logrus.WithError(err).Error("Failed to reset to default document root")
 			w.WriteHeader(http.StatusInternalServerError)

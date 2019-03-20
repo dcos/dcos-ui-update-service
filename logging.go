@@ -18,12 +18,12 @@ func initLogging(config *config.Config) {
 	setupSplitLogging()
 
 	// Set logging level
-	lvl, err := log.ParseLevel(config.LogLevel)
+	lvl, err := log.ParseLevel(config.LogLevel())
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.SetLevel(lvl)
-	log.Infof("Logging set to: %s", config.LogLevel)
+	log.Infof("Logging set to: %s", config.LogLevel())
 }
 
 func setupSplitLogging() {
