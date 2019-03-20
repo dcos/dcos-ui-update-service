@@ -19,50 +19,52 @@ func tearDown(t *testing.T) {
 }
 
 func setupTestUIService() *UIService {
-	cfg := config.NewDefaultConfig()
-	cfg.DefaultDocRoot = "../testdata/uiserv-sandbox/dcos-ui"
-	cfg.VersionsRoot = "../testdata/uiserv-sandbox/ui-versions"
-	cfg.UIDistSymlink = "../testdata/uiserv-sandbox/dcos-ui-dist"
-	cfg.UIDistStageSymlink = "../testdata/uiserv-sandbox/new-dcos-ui-dist"
-	cfg.MasterCountFile = "../fixtures/single-master"
+	cfg, _ := config.Parse([]string{
+		"--default-ui-path", "../testdata/uiserv-sandbox/dcos-ui",
+		"--versions-root", "../testdata/uiserv-sandbox/ui-versions",
+		"--ui-dist-symlink", "../testdata/uiserv-sandbox/dcos-ui-dist",
+		"--ui-dist-stage-symlink", "../testdata/uiserv-sandbox/new-dcos-ui-dist",
+		"--master-count-file", "../fixtures/single-master",
+	})
 
 	um, _ := updateManager.NewClient(cfg)
 	um.Fs = afero.NewOsFs()
-	os.MkdirAll(cfg.VersionsRoot, 0755)
-	os.MkdirAll(cfg.DefaultDocRoot, 0755)
-	os.Symlink(cfg.DefaultDocRoot, cfg.UIDistSymlink)
+	os.MkdirAll(cfg.VersionsRoot(), 0755)
+	os.MkdirAll(cfg.DefaultDocRoot(), 0755)
+	os.Symlink(cfg.DefaultDocRoot(), cfg.UIDistSymlink())
 
 	return &UIService{
 		Config:        cfg,
 		UpdateManager: um,
 		MasterCounter: dcos.DCOS{
-			MasterCountLocation: cfg.MasterCountFile,
+			MasterCountLocation: cfg.MasterCountFile(),
 		},
 		VersionStore: VersionStoreDouble(),
 	}
 }
 
 func setupUIServiceWithVersion() *UIService {
-	cfg := config.NewDefaultConfig()
-	cfg.DefaultDocRoot = "../testdata/uiserv-sandbox/dcos-ui"
-	cfg.VersionsRoot = "../testdata/uiserv-sandbox/ui-versions"
-	cfg.UIDistSymlink = "../testdata/uiserv-sandbox/dcos-ui-dist"
-	cfg.UIDistStageSymlink = "../testdata/uiserv-sandbox/new-dcos-ui-dist"
-	cfg.MasterCountFile = "../fixtures/single-master"
+	cfg, _ := config.Parse([]string{
+		"--default-ui-path", "../testdata/uiserv-sandbox/dcos-ui",
+		"--versions-root", "../testdata/uiserv-sandbox/ui-versions",
+		"--ui-dist-symlink", "../testdata/uiserv-sandbox/dcos-ui-dist",
+		"--ui-dist-stage-symlink", "../testdata/uiserv-sandbox/new-dcos-ui-dist",
+		"--master-count-file", "../fixtures/single-master",
+	})
 
 	um, _ := updateManager.NewClient(cfg)
 	um.Fs = afero.NewOsFs()
-	versionPath := path.Join(path.Join(cfg.VersionsRoot, "2.24.4"), "dist")
-	os.MkdirAll(cfg.VersionsRoot, 0755)
-	os.MkdirAll(cfg.DefaultDocRoot, 0755)
+	versionPath := path.Join(path.Join(cfg.VersionsRoot(), "2.24.4"), "dist")
+	os.MkdirAll(cfg.VersionsRoot(), 0755)
+	os.MkdirAll(cfg.DefaultDocRoot(), 0755)
 	os.MkdirAll(versionPath, 0755)
-	os.Symlink(versionPath, cfg.UIDistSymlink)
+	os.Symlink(versionPath, cfg.UIDistSymlink())
 
 	return &UIService{
 		Config:        cfg,
 		UpdateManager: um,
 		MasterCounter: dcos.DCOS{
-			MasterCountLocation: cfg.MasterCountFile,
+			MasterCountLocation: cfg.MasterCountFile(),
 		},
 		VersionStore: VersionStoreDouble(),
 	}
@@ -95,7 +97,7 @@ func TestVersionChange(t *testing.T) {
 		var resetCalled, updateCalled bool
 		defer tearDown(t)
 		service := setupUIServiceWithVersion()
-		newVersionPath := path.Join(path.Join(service.Config.VersionsRoot, "2.24.5"), "dist")
+		newVersionPath := path.Join(path.Join(service.Config.VersionsRoot(), "2.24.5"), "dist")
 
 		um := UpdateManagerDouble()
 		um.VersionResult = "2.24.4"
