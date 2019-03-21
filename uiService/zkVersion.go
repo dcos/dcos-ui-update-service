@@ -129,7 +129,7 @@ func (zks *zkVersionStore) connectAndInitZKAsync(cfg *config.Config) {
 
 func (zks *zkVersionStore) initZKVersionStore(client zookeeper.ZKClient) {
 	zks.client = client
-	client.RegisterListener(func(state zookeeper.ClientState) {
+	client.RegisterListener("zk-version-store-version", func(state zookeeper.ClientState) {
 		go zks.handleZKStateChange(state)
 	})
 }

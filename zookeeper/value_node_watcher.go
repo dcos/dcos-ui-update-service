@@ -68,7 +68,7 @@ func CreateValueNodeWatcher(client ZKClient, path string, polltimeout time.Durat
 	}
 	nw.log.Debug("Value watcher created.")
 	nw.log.Tracef("Value poll timeout %d", int64(polltimeout))
-	client.RegisterListenerWithID(path, nw.handleZkStateChange)
+	client.RegisterListener(path, nw.handleZkStateChange)
 	return nw, nil
 }
 

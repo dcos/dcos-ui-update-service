@@ -21,16 +21,14 @@ type Client struct {
 	nodeSchema  string
 	zkState     zk.State
 	clientState ClientState
-	listeners   []StateListener
-	idListeners map[string]StateListener
+	listeners   map[string]StateListener
 	sync.Mutex
 }
 
 type ZKClient interface {
 	Close()
 	ClientState() ClientState
-	RegisterListener(listener StateListener)
-	RegisterListenerWithID(id string, listener StateListener)
+	RegisterListener(id string, listener StateListener)
 	UnregisterListener(id string)
 
 	Exists(path string) (bool, int32, error)
@@ -160,24 +158,15 @@ func (c *Client) Delete(path string) error {
 	return c.conn.Delete(path, stat.Version)
 }
 
-// RegisterListener adds the specified listener and also sets the current state
-func (c *Client) RegisterListener(listener StateListener) {
+// RegisterListener adds the specified listener and also sends the current state to the listener
+func (c *Client) RegisterListener(id string, listener StateListener) {
 	c.Lock()
 	defer c.Unlock()
-	c.listeners = append(c.listeners, listener)
-	// always send the client state the first time
-	listener(c.clientState)
-}
-
-// RegisterListenerWithID adds the specified listener with an id and also sets the current state. Id can be used later to unregister this listener
-func (c *Client) RegisterListenerWithID(id string, listener StateListener) {
-	c.Lock()
-	defer c.Unlock()
-	if _, ok := c.idListeners[id]; ok {
+	if _, ok := c.listeners[id]; ok {
 		// Listener with id is already registered, replace listener, but don't call it
-		c.idListeners[id] = listener
+		c.listeners[id] = listener
 	} else {
-		c.idListeners[id] = listener
+		c.listeners[id] = listener
 		// always send the client state the first time
 		listener(c.clientState)
 	}
@@ -187,8 +176,8 @@ func (c *Client) RegisterListenerWithID(id string, listener StateListener) {
 func (c *Client) UnregisterListener(id string) {
 	c.Lock()
 	defer c.Unlock()
-	if _, ok := c.idListeners[id]; ok {
-		delete(c.idListeners, id)
+	if _, ok := c.listeners[id]; ok {
+		delete(c.listeners, id)
 	}
 }
 
@@ -220,7 +209,7 @@ func connect(config zkConfig) (*Client, error) {
 				Perms:  zk.PermAll,
 			},
 		},
-		idListeners: make(map[string]StateListener),
+		listeners: make(map[string]StateListener),
 	}
 	client.conn, _, err = zk.Connect([]string{config.Address},
 		config.SessionTimeout,
@@ -307,9 +296,6 @@ func (c *Client) eventCallback(sessionEstablished chan struct{}) zk.EventCallbac
 		}
 		if stateChange {
 			for _, listener := range c.listeners {
-				go listener(c.clientState)
-			}
-			for _, listener := range c.idListeners {
 				go listener(c.clientState)
 			}
 		}
