@@ -14,7 +14,6 @@ type FakeZKClient struct {
 	ChildrenError error
 
 	ClientStateResult ClientState
-	Listeners         []StateListener
 	IDListeners       map[string]StateListener
 	ExistsResult      bool
 	GetResult         []byte
@@ -41,12 +40,7 @@ func (zkc *FakeZKClient) ClientState() ClientState {
 	return zkc.ClientStateResult
 }
 
-func (zkc *FakeZKClient) RegisterListener(listener StateListener) {
-	zkc.Listeners = append(zkc.Listeners, listener)
-	listener(zkc.ClientStateResult)
-}
-
-func (zkc *FakeZKClient) RegisterListenerWithID(id string, listener StateListener) {
+func (zkc *FakeZKClient) RegisterListener(id string, listener StateListener) {
 	zkc.IDListeners[id] = listener
 	listener(zkc.ClientStateResult)
 }
@@ -57,9 +51,6 @@ func (zkc *FakeZKClient) UnregisterListener(id string) {
 
 func (zkc *FakeZKClient) PublishStateChange(newState ClientState) {
 	zkc.ClientStateResult = newState
-	for _, l := range zkc.Listeners {
-		l(newState)
-	}
 	for _, l := range zkc.IDListeners {
 		l(newState)
 	}

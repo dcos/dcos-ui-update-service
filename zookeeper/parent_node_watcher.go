@@ -67,7 +67,7 @@ func CreateParentNodeWatcher(client ZKClient, path string, polltimeout time.Dura
 	}
 	nw.log.Debug("Parent watcher created.")
 	nw.log.Tracef("Parent poll timeout %d", int64(polltimeout))
-	client.RegisterListenerWithID(path, nw.handleZkStateChange)
+	client.RegisterListener(path, nw.handleZkStateChange)
 	return nw, nil
 }
 
