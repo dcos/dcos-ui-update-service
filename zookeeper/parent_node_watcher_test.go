@@ -103,7 +103,10 @@ func TestParentNodeWatcher(t *testing.T) {
 			wg.Done()
 		})
 		defer watcher.Close()
+
+		client.Lock()
 		client.ChildrenResults = []string{"bar"}
+		client.Unlock()
 
 		listenerMutex.Lock()
 		client.EventChannel <- zk.Event{
@@ -143,7 +146,10 @@ func TestParentNodeWatcher(t *testing.T) {
 			wg.Done()
 		})
 		defer watcher.Close()
+
+		client.Lock()
 		client.ChildrenResults = []string{"bar"}
+		client.Unlock()
 
 		wg.Wait()
 
@@ -175,7 +181,9 @@ func TestParentNodeWatcher(t *testing.T) {
 			wg.Done()
 		})
 		defer watcher.Close()
+		client.Lock()
 		client.ChildrenResults = []string{"baz"}
+		client.Unlock()
 
 		listenerMutex.Lock()
 		client.EventChannel <- zk.Event{

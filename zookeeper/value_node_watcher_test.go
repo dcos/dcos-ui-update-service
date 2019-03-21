@@ -102,8 +102,10 @@ func TestValueNodeWatcher(t *testing.T) {
 		})
 		defer watcher.Close()
 
+		client.Lock()
 		client.ExistsResult = true
 		client.GetResult = []byte("bar")
+		client.Unlock()
 
 		listenerMutex.Lock()
 		client.EventChannel <- zk.Event{
@@ -141,8 +143,10 @@ func TestValueNodeWatcher(t *testing.T) {
 		})
 		defer watcher.Close()
 
+		client.Lock()
 		client.ExistsResult = true
 		client.GetResult = []byte("bar")
+		client.Unlock()
 
 		wg.Wait()
 
@@ -204,12 +208,15 @@ func TestValueNodeWatcher(t *testing.T) {
 		var listenerMutex sync.Mutex
 		wg.Add(1)
 		var listenerCalls [][]byte
-		watcher, err := CreateValueNodeWatcher(client, "/foo", shortPollTimeout, func(val []byte) {
+		callback := func(val []byte) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)
 			wg.Done()
-		})
+		}
+
+		watcher, err := CreateValueNodeWatcher(client, "/foo", shortPollTimeout, callback)
+
 		helper.IsNil(err)
 		defer watcher.Close()
 
@@ -243,8 +250,10 @@ func TestValueNodeWatcher(t *testing.T) {
 		})
 		defer watcher.Close()
 
+		client.Lock()
 		client.ExistsResult = false
 		client.GetResult = []byte{}
+		client.Unlock()
 
 		listenerMutex.Lock()
 		client.EventChannel <- zk.Event{
@@ -283,8 +292,10 @@ func TestValueNodeWatcher(t *testing.T) {
 		})
 		defer watcher.Close()
 
+		client.Lock()
 		client.ExistsResult = false
 		client.GetResult = []byte{}
+		client.Unlock()
 
 		wg.Wait()
 

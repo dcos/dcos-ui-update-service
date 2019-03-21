@@ -28,6 +28,8 @@ type valueNodeWatcher struct {
 }
 
 func (nw *valueNodeWatcher) Value() []byte {
+	nw.watchMutex.Lock()
+	defer nw.watchMutex.Unlock()
 	return nw.value
 }
 
@@ -287,8 +289,11 @@ func (nw *valueNodeWatcher) handleValueReceived(value []byte, version int32) {
 		nw.log.WithField("zk-node-value", "nil").Trace("Received ZK Node Value")
 	}
 
+	nw.watchMutex.Lock()
+	defer nw.watchMutex.Unlock()
 	if !bytes.Equal(nw.value, value) || nw.lastVersion != version {
 		nw.value = value
+
 		nw.log.WithFields(
 			logrus.Fields{
 				"current-value":        string(nw.value),

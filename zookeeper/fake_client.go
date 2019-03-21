@@ -2,6 +2,7 @@ package zookeeper
 
 import (
 	"github.com/samuel/go-zookeeper/zk"
+	"sync"
 )
 
 type FakeZKClient struct {
@@ -23,6 +24,7 @@ type FakeZKClient struct {
 
 	CreateCall func(string, []byte, []int32)
 	SetCall    func(string, []byte)
+	sync.Mutex
 }
 
 func NewFakeZKClient() *FakeZKClient {
@@ -63,6 +65,8 @@ func (zkc *FakeZKClient) PublishStateChange(newState ClientState) {
 }
 
 func (zkc *FakeZKClient) Exists(path string) (bool, int32, error) {
+	zkc.Lock()
+	defer zkc.Unlock()
 	if zkc.ExistsError != nil {
 		return false, -1, zkc.ExistsError
 	}
@@ -71,10 +75,14 @@ func (zkc *FakeZKClient) Exists(path string) (bool, int32, error) {
 
 func (zkc *FakeZKClient) existsW(path string) (bool, int32, <-chan zk.Event, error) {
 	found, ver, err := zkc.Exists(path)
+	zkc.Lock()
+	defer zkc.Unlock()
 	return found, ver, zkc.EventChannel, err
 }
 
 func (zkc *FakeZKClient) Get(path string) ([]byte, int32, error) {
+	zkc.Lock()
+	defer zkc.Unlock()
 	if zkc.GetError != nil {
 		return nil, -1, zkc.GetError
 	}
@@ -92,10 +100,14 @@ func (zkc *FakeZKClient) Get(path string) ([]byte, int32, error) {
 
 func (zkc *FakeZKClient) getW(path string) ([]byte, int32, <-chan zk.Event, error) {
 	val, ver, err := zkc.Get(path)
+	zkc.Lock()
+	defer zkc.Unlock()
 	return val, ver, zkc.EventChannel, err
 }
 
 func (zkc *FakeZKClient) Create(path string, data []byte, perms []int32) error {
+	zkc.Lock()
+	defer zkc.Unlock()
 	if zkc.CreateCall != nil {
 		zkc.CreateCall(path, data, perms)
 	}
@@ -106,6 +118,8 @@ func (zkc *FakeZKClient) Create(path string, data []byte, perms []int32) error {
 }
 
 func (zkc *FakeZKClient) Set(path string, data []byte) (int32, error) {
+	zkc.Lock()
+	defer zkc.Unlock()
 	if zkc.SetCall != nil {
 		zkc.SetCall(path, data)
 	}
@@ -116,6 +130,8 @@ func (zkc *FakeZKClient) Set(path string, data []byte) (int32, error) {
 }
 
 func (zkc *FakeZKClient) Children(path string) ([]string, int32, error) {
+	zkc.Lock()
+	defer zkc.Unlock()
 	if zkc.ChildrenError != nil {
 		return nil, -1, zkc.ChildrenError
 	}
@@ -124,5 +140,7 @@ func (zkc *FakeZKClient) Children(path string) ([]string, int32, error) {
 
 func (zkc *FakeZKClient) childrenW(path string) ([]string, int32, <-chan zk.Event, error) {
 	val, ver, err := zkc.Children(path)
+	zkc.Lock()
+	defer zkc.Unlock()
 	return val, ver, zkc.EventChannel, err
 }
