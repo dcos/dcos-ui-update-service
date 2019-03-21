@@ -36,6 +36,8 @@ var (
 	ErrUIPackageAssetBadURI = errors.New("Failed to parse dcos-ui-bundle asset URI")
 	// ErrRemovingVersion occurs if removing the version fails
 	ErrRemovingVersion = errors.New("Failed to remove the version")
+	// ErrRemovingAllVersions occurs if removing all versions fails
+	ErrRemovingAllVersions = errors.New("Failed to remove all versions")
 )
 
 // Client handles access to common setup question
@@ -51,6 +53,7 @@ type Client struct {
 type UpdateManager interface {
 	UpdateToVersion(string, func(string) error) error
 	RemoveVersion(string) error
+	RemoveAllVersionsExcept(string) error
 	CurrentVersion() (string, error)
 	PathToCurrentVersion() (string, error)
 }
@@ -213,6 +216,37 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 		return um.RemoveVersion(currentVersion)
 	}
 
+	return nil
+}
+
+// RemoveAllVersionsExcept deletes all versions except for the specified version
+func (um *Client) RemoveAllVersionsExcept(omitVersion string) error {
+	var err error
+
+	err = afero.Walk(um.Fs, um.Config.VersionsRoot(), func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			// return all types of errors
+			return walkErr
+		}
+
+		// The starting directory is included in Walk
+		if path == um.Config.VersionsRoot() || info.Name() == omitVersion {
+			return nil
+		}
+
+		if info.IsDir() {
+			um.RemoveVersion(info.Name())
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		logrus.WithError(err).Error("Could not remove all versions.")
+		return ErrRemovingAllVersions
+	}
+
+	logrus.Info("Removed all versions")
 	return nil
 }
 
