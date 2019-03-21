@@ -1,8 +1,6 @@
 package zookeeper
 
 import (
-	"time"
-
 	"github.com/pkg/errors"
 )
 
@@ -27,30 +25,4 @@ type ValueNodeWatcher interface {
 	Value() []byte
 	Path() string
 	Close()
-}
-
-// CreateParentNodeWatcher returns a ZK ParentNodeWatcher that will call the provided listener when the children of the node are modified.
-// Will poll the node for changes with the default watcherPollTimeout
-func CreateParentNodeWatcher(client ZKClient, path string, pollTimeout time.Duration, listener ParentNodeWatchListener) (ParentNodeWatcher, error) {
-	if listener == nil {
-		return nil, ErrListenerNotProvided
-	}
-	// Ensure client is currently connected, otherwise error
-	if client.ClientState() == Disconnected {
-		return nil, ErrDisconnected
-	}
-	return createParentWatcher(client, path, pollTimeout, listener)
-}
-
-// CreateValueNodeWatcher returns a ZK ValueNodeWatcher that will call the provided listener when the node value changes, is created or deleted.
-// Will poll the node for changes with the default watcherPollTimeout
-func CreateValueNodeWatcher(client ZKClient, path string, pollTimeout time.Duration, listener ValueNodeWatchListener) (ValueNodeWatcher, error) {
-	if listener == nil {
-		return nil, ErrListenerNotProvided
-	}
-	// Ensure client is currently connected, otherwise error
-	if client.ClientState() == Disconnected {
-		return nil, ErrDisconnected
-	}
-	return createValueWatcher(client, path, pollTimeout, listener)
 }
