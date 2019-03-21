@@ -1,8 +1,9 @@
 package zookeeper
 
 import (
-	"github.com/samuel/go-zookeeper/zk"
 	"sync"
+
+	"github.com/samuel/go-zookeeper/zk"
 )
 
 type FakeZKClient struct {

@@ -25,20 +25,15 @@ type parentNodeWatcher struct {
 	log          *logrus.Entry
 }
 
-func (nw *parentNodeWatcher) Children() []string {
-	return nw.children
-}
-
-func (nw *parentNodeWatcher) Path() string {
-	return nw.nodePath
-}
-
-func (nw *parentNodeWatcher) Close() {
-	close(nw.closed)
-	nw.client.UnregisterListener(nw.nodePath)
-}
-
-func createParentWatcher(client ZKClient, path string, polltimeout time.Duration, listener ParentNodeWatchListener) (ParentNodeWatcher, error) {
+// CreateParentNodeWatcher returns a ZK ParentNodeWatcher that will call the provided listener when the children of the node are modified.
+func CreateParentNodeWatcher(client ZKClient, path string, polltimeout time.Duration, listener ParentNodeWatchListener) (ParentNodeWatcher, error) {
+	if listener == nil {
+		return nil, ErrListenerNotProvided
+	}
+	// Ensure client is currently connected, otherwise error
+	if client.ClientState() == Disconnected {
+		return nil, ErrDisconnected
+	}
 	// For parent node ensure it exists
 	exists, _, err := client.Exists(path)
 	if err != nil {
@@ -74,6 +69,19 @@ func createParentWatcher(client ZKClient, path string, polltimeout time.Duration
 	nw.log.Tracef("Parent poll timeout %d", int64(polltimeout))
 	client.RegisterListenerWithID(path, nw.handleZkStateChange)
 	return nw, nil
+}
+
+func (nw *parentNodeWatcher) Children() []string {
+	return nw.children
+}
+
+func (nw *parentNodeWatcher) Path() string {
+	return nw.nodePath
+}
+
+func (nw *parentNodeWatcher) Close() {
+	close(nw.closed)
+	nw.client.UnregisterListener(nw.nodePath)
 }
 
 func (nw *parentNodeWatcher) handleZkStateChange(state ClientState) {

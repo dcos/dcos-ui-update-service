@@ -27,22 +27,15 @@ type valueNodeWatcher struct {
 	watchMutex   sync.Mutex
 }
 
-func (nw *valueNodeWatcher) Value() []byte {
-	nw.watchMutex.Lock()
-	defer nw.watchMutex.Unlock()
-	return nw.value
-}
-
-func (nw *valueNodeWatcher) Path() string {
-	return nw.nodePath
-}
-
-func (nw *valueNodeWatcher) Close() {
-	close(nw.closed)
-	nw.client.UnregisterListener(nw.nodePath)
-}
-
-func createValueWatcher(client ZKClient, path string, polltimeout time.Duration, listener ValueNodeWatchListener) (ValueNodeWatcher, error) {
+// CreateValueNodeWatcher returns a ZK ValueNodeWatcher that will call the provided listener when the node value changes, is created or deleted.
+func CreateValueNodeWatcher(client ZKClient, path string, polltimeout time.Duration, listener ValueNodeWatchListener) (ValueNodeWatcher, error) {
+	if listener == nil {
+		return nil, ErrListenerNotProvided
+	}
+	// Ensure client is currently connected, otherwise error
+	if client.ClientState() == Disconnected {
+		return nil, ErrDisconnected
+	}
 	exists, ver, err := client.Exists(path)
 	if err != nil {
 		return nil, ErrFailedToReadNode
@@ -77,6 +70,21 @@ func createValueWatcher(client ZKClient, path string, polltimeout time.Duration,
 	nw.log.Tracef("Value poll timeout %d", int64(polltimeout))
 	client.RegisterListenerWithID(path, nw.handleZkStateChange)
 	return nw, nil
+}
+
+func (nw *valueNodeWatcher) Value() []byte {
+	nw.watchMutex.Lock()
+	defer nw.watchMutex.Unlock()
+	return nw.value
+}
+
+func (nw *valueNodeWatcher) Path() string {
+	return nw.nodePath
+}
+
+func (nw *valueNodeWatcher) Close() {
+	close(nw.closed)
+	nw.client.UnregisterListener(nw.nodePath)
 }
 
 func (nw *valueNodeWatcher) handleZkStateChange(state ClientState) {
