@@ -178,6 +178,8 @@ type fakeUpdateManager struct {
 	VersionPathError     error
 	ResetError           error
 	ResetCall            func() error
+	RemoveAllError       error
+	RemoveAllCall        func() error
 	UpdateError          error
 	UpdateCall           func(string)
 	UpdateNewVersionPath string
@@ -208,6 +210,17 @@ func (um *fakeUpdateManager) RemoveVersion(version string) error {
 	}
 	if um.ResetCall != nil {
 		tErr := um.ResetCall()
+		return tErr
+	}
+	return nil
+}
+
+func (um *fakeUpdateManager) RemoveAllVersionsExcept(string) error {
+	if um.RemoveAllError != nil {
+		return um.RemoveAllError
+	}
+	if um.RemoveAllCall != nil {
+		tErr := um.RemoveAllCall()
 		return tErr
 	}
 	return nil

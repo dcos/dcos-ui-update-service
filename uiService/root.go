@@ -53,8 +53,11 @@ func SetupService(cfg *config.Config) (*UIService, error) {
 	}
 
 	checkUIDistSymlink(cfg)
-	checkVersionsRoot(cfg)
 	checkCurrentVersion(updateManager)
+	err = deleteOrphanedVersions(cfg, updateManager)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to clean up unused versions")
+	}
 
 	return service, nil
 }
@@ -110,6 +113,16 @@ func checkCurrentVersion(updateManager *updateManager.Client) {
 			logrus.Fields{"version": "Default"},
 		).Info("Current package version")
 	}
+}
+
+func deleteOrphanedVersions(cfg *config.Config, updateManager *updateManager.Client) error {
+	version, err := updateManager.CurrentVersion()
+	if err != nil {
+		return err
+	}
+
+	err = updateManager.RemoveAllVersionsExcept(version)
+	return err
 }
 
 func checkVersionsRoot(cfg *config.Config) {
