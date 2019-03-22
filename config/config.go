@@ -15,6 +15,11 @@ type Config struct {
 	viper *viper.Viper
 }
 
+var (
+	// ErrPotentiallyDangerousVersionsRoot occurs if the Configured VersionsRoot is not set or set to an empty string or "/"
+	ErrPotentiallyDangerousVersionsRoot = errors.New("potentially dangerous versions-root configuration")
+)
+
 // Default values for config files
 const (
 	defaultConfig             = ""
@@ -111,6 +116,16 @@ func NewDefaultConfig() *Config {
 	return defaults
 }
 
+func validateConfig(cfg *Config) error {
+	var err error
+
+	if len(cfg.VersionsRoot()) <= 1 {
+		err = ErrPotentiallyDangerousVersionsRoot
+	}
+
+	return err
+}
+
 // Parse parses configuration from CLI arguments, environment variables, or config file
 func Parse(args []string) (*Config, error) {
 	viper := viper.New()
@@ -133,7 +148,8 @@ func Parse(args []string) (*Config, error) {
 		}
 	}
 
-	return &Config{viper}, nil
+	result := &Config{viper}
+	return result, validateConfig(result)
 }
 
 // ConfigFilePath is the path of the config file to load config settings from
