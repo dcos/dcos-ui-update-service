@@ -223,13 +223,19 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 func (um *Client) RemoveAllVersionsExcept(omitVersion string) error {
 	var err error
 
-	err = afero.Walk(um.Fs, um.Config.VersionsRoot(), func(path string, info os.FileInfo, walkErr error) error {
+	root := um.Config.VersionsRoot()
+	if len(root) <= 1 {
+		logrus.WithField("versions-root", root).Fatal("Potentially dangerous versions-root configuration.")
+		return ErrRemovingAllVersions
+	}
+
+	err = afero.Walk(um.Fs, root, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			// return all types of errors
 			return walkErr
 		}
 
-		// The starting directory is included in Walk
+		// The starting directory is included in Walk and should be skipped
 		if path == um.Config.VersionsRoot() || info.Name() == omitVersion {
 			return nil
 		}
