@@ -32,6 +32,7 @@ const (
 	defaultZKBasePath         = "/dcos/ui-update"
 	defaultZKAuthInfo         = ""
 	defaultZKZnodeOwner       = ""
+	defaultPackageName        = "dcos-ui"
 	defaultZKSessionTimeout   = 5 * time.Second
 	defaultZKConnectTimeout   = 5 * time.Second
 	defaultZKPollingInterval  = 30 * time.Second
@@ -54,6 +55,7 @@ const (
 	optZKBasePath         = "zk-base-path"
 	optZKAuthInfo         = "zk-auth-info"
 	optZKZnodeOwner       = "zk-znode-owner"
+	optPackageName        = "package-name"
 	optZKSessionTimeout   = "zk-session-timeout"
 	optZKConnectTimeout   = "zk-connect-timeout"
 	optZKPollingInterval  = "zk-poll-int"
@@ -81,6 +83,7 @@ func defineFlags(viper *viper.Viper) (*pflag.FlagSet, error) {
 	fs.String(optZKBasePath, defaultZKBasePath, "The path of the root zookeeper znode.")
 	fs.String(optZKAuthInfo, defaultZKAuthInfo, "Authentication details for zookeeper.")
 	fs.String(optZKZnodeOwner, defaultZKZnodeOwner, "The ZK owner of the base path.")
+	fs.String(optPackageName, defaultPackageName, "The name of the package to update.")
 	fs.Duration(optZKSessionTimeout, defaultZKSessionTimeout, "ZK session timeout.")
 	fs.Duration(optZKConnectTimeout, defaultZKConnectTimeout, "Timeout to establish initial zookeeper connection.")
 	fs.Duration(optZKPollingInterval, defaultZKPollingInterval, "Interval to check zookeeper node for version updates.")
@@ -209,6 +212,11 @@ func (c Config) ZKAuthInfo() string {
 // ZKZnodeOwner is the ZK owner of the base path
 func (c Config) ZKZnodeOwner() string {
 	return c.viper.GetString(optZKZnodeOwner)
+}
+
+// PackageName is the name of the package to update
+func (c Config) PackageName() string {
+	return c.viper.GetString(optPackageName)
 }
 
 // ZKSessionTimeout is the session timeout to ZK

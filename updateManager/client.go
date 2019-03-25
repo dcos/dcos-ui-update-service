@@ -74,7 +74,8 @@ func NewClient(cfg *config.Config) (*Client, error) {
 
 // LoadVersion downloads the given DC/OS UI version to the target directory.
 func (um *Client) loadVersion(version string, targetDirectory string) error {
-	listVersionResp, listErr := um.Cosmos.ListPackageVersions("dcos-ui")
+	pkgName := um.Config.PackageName()
+	listVersionResp, listErr := um.Cosmos.ListPackageVersions(pkgName)
 	if listErr != nil {
 		logrus.WithError(listErr).Error("Cosmos ListPackageVersions request failed")
 		return ErrCosmosRequestFailure
@@ -85,14 +86,14 @@ func (um *Client) loadVersion(version string, targetDirectory string) error {
 		return ErrRequestedVersionNotFound
 	}
 
-	assets, getAssetsErr := um.Cosmos.GetPackageAssets("dcos-ui", version)
+	assets, getAssetsErr := um.Cosmos.GetPackageAssets(pkgName, version)
 	if getAssetsErr != nil {
 		logrus.WithError(listErr).Error("Cosmos GetPackageAssets request failed")
 		return ErrCosmosRequestFailure
 	}
 	logrus.Info("Loading Version: Retrieved package assets from cosmos")
 
-	uiBundleName := cosmos.PackageAssetNameString("dcos-ui-bundle")
+	uiBundleName := cosmos.PackageAssetNameString(pkgName + "-bundle")
 	uiBundleURI, found := assets[uiBundleName]
 	if !found {
 		return ErrUIPackageAssetNotFound
