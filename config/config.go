@@ -42,6 +42,7 @@ const (
 	defaultZKConnectTimeout   = 5 * time.Second
 	defaultZKPollingInterval  = 30 * time.Second
 	defaultInitUIDistSymlink  = false
+	defaultMesosStateURL      = ""
 )
 
 const (
@@ -65,6 +66,7 @@ const (
 	optZKConnectTimeout   = "zk-connect-timeout"
 	optZKPollingInterval  = "zk-poll-int"
 	optInitUIDistSymlink  = "init-ui-dist-symlink"
+	optMesosStateURL      = "mesos-state-url"
 )
 
 func defineFlags(viper *viper.Viper) (*pflag.FlagSet, error) {
@@ -93,6 +95,7 @@ func defineFlags(viper *viper.Viper) (*pflag.FlagSet, error) {
 	fs.Duration(optZKConnectTimeout, defaultZKConnectTimeout, "Timeout to establish initial zookeeper connection.")
 	fs.Duration(optZKPollingInterval, defaultZKPollingInterval, "Interval to check zookeeper node for version updates.")
 	fs.Bool(optInitUIDistSymlink, defaultInitUIDistSymlink, "Initialize the UI dist symlink if missing")
+	fs.String(optMesosStateURL, defaultMesosStateURL, "Override the default mesos state url")
 
 	viper.BindEnv(optListenAddress, "DCOS_UI_UPDATE_LISTEN_ADDR")
 	viper.BindEnv(optDefaultDocRoot, "DCOS_UI_UPDATE_DEFAULT_UI_PATH")
@@ -253,4 +256,9 @@ func (c Config) ZKPollingInterval() time.Duration {
 // InitUIDistSymlink is whether the UIDistSymlink should be initialized if it doesn't exist, defaults to false and should only be used for local dev
 func (c Config) InitUIDistSymlink() bool {
 	return c.viper.GetBool(optInitUIDistSymlink)
+}
+
+// MesosStateURL is the value to override the url for retrieving the mesos state, this should only be used for local development
+func (c Config) MesosStateURL() string {
+	return c.viper.GetString(optMesosStateURL)
 }

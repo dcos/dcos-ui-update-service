@@ -23,7 +23,7 @@ type UIService struct {
 
 	UpdateManager updatemanager.UpdateManager
 
-	MasterCounter dcos.MasterCounter
+	DCOS dcos.DCOS
 
 	VersionStore VersionStore
 
@@ -39,16 +39,23 @@ func SetupService(cfg *config.Config) (*UIService, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create update manager")
 	}
-	dcos := dcos.DCOS{
-		MasterCountLocation: cfg.MasterCountFile(),
+
+	dcos := dcos.NewDCOS(cfg)
+	myip, err := dcos.DetectIP()
+	if err != nil {
+		log.WithError(err).Warning("Unabled to determine IP")
+	} else {
+		log.WithField("IP", myip).Debug("Container IP")
 	}
+	leader, _ := dcos.IsLeader()
+		log.WithField("leader", leader).Debug("Is mesos leader")
 
 	versionStore := NewZKVersionStore(cfg)
 
 	service := &UIService{
 		Config:        cfg,
 		UpdateManager: updateManager,
-		MasterCounter: dcos,
+		DCOS:          dcos,
 		VersionStore:  versionStore,
 	}
 

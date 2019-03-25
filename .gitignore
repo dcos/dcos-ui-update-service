@@ -5,7 +5,7 @@ builds/
 versions/
 dcos-ui-update-service
 .docker.build.dev*
-testdata/localCosmos/node_modules/
-testdata/localCosmos/package-lock.json
+testdata/clusterProxy/node_modules/
+testdata/clusterProxy/package-lock.json
 testdata/docroot/dcos-ui-dist
 testdata/*sandbox/

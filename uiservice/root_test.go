@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dcos/dcos-ui-update-service/config"
-	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/tests"
 	"github.com/dcos/dcos-ui-update-service/updatemanager"
 	"github.com/spf13/afero"
@@ -36,10 +35,7 @@ func setupTestUIService() *UIService {
 	return &UIService{
 		Config:        cfg,
 		UpdateManager: um,
-		MasterCounter: dcos.DCOS{
-			MasterCountLocation: cfg.MasterCountFile(),
-		},
-		VersionStore: VersionStoreDouble(),
+		VersionStore:  VersionStoreDouble(),
 	}
 }
 
@@ -63,10 +59,7 @@ func setupUIServiceWithVersion() *UIService {
 	return &UIService{
 		Config:        cfg,
 		UpdateManager: um,
-		MasterCounter: dcos.DCOS{
-			MasterCountLocation: cfg.MasterCountFile(),
-		},
-		VersionStore: VersionStoreDouble(),
+		VersionStore:  VersionStoreDouble(),
 	}
 }
 

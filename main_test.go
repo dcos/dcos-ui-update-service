@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/dcos/dcos-ui-update-service/config"
-	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/tests"
 	"github.com/dcos/dcos-ui-update-service/uiservice"
 	"github.com/dcos/dcos-ui-update-service/updatemanager"
@@ -79,10 +78,7 @@ func setupTestUIService() *uiservice.UIService {
 	return &uiservice.UIService{
 		Config:        cfg,
 		UpdateManager: um,
-		MasterCounter: dcos.DCOS{
-			MasterCountLocation: cfg.MasterCountFile(),
-		},
-		VersionStore: VersionStoreDouble(),
+		VersionStore:  VersionStoreDouble(),
 	}
 }
 

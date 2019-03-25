@@ -1,4 +1,4 @@
-FROM golang:1.11.3
+FROM golang:1.11
 
 RUN apt-get update && apt-get install -y curl vim python-pip groff && \
     pip install --upgrade awscli
@@ -6,6 +6,11 @@ RUN apt-get update && apt-get install -y curl vim python-pip groff && \
 RUN go get -u github.com/golangci/golangci-lint/cmd/golangci-lint github.com/t-yuki/gocover-cobertura github.com/ivpusic/rerun
 
 RUN mkdir -p /run/dcos
+
+RUN mkdir -p /opt/mesosphere/bin
+
+COPY ./fixtures/detect_ip /opt/mesosphere/bin/detect_ip
+RUN chmod +x /opt/mesosphere/bin/detect_ip
 
 ADD . /src
 WORKDIR /src

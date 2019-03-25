@@ -9,15 +9,18 @@ services:
     volumes:
       - .:/src
       - ./testdata/docroot:/opt/mesosphere/active
+      - ./fixtures/single-master:/opt/mesosphere/etc/master_count
     command: ["rerun", "-v", "--config=rerun.json"]
-  cosmos:
+    extra_hosts:
+      - "leader.mesos:172.24.0.5"
+  cluster:
     build:
-      context: ./testdata/localCosmos
+      context: ./testdata/clusterProxy
       dockerfile: Dockerfile
     ports:
-      - 7070:7070
+      - 6000:6000
     volumes:
-      - ./testdata/localCosmos:/opt/app
+      - ./testdata/clusterProxy:/opt/app
       - /opt/app/node_modules
     environment:
       - CLUSTER_URL

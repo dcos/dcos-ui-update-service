@@ -1,7 +1,7 @@
 const fs = require("fs");
 const httpProxy = require('http-proxy');
 
-const port = 7070;
+const port = 6000;
 let clusterUrl = process.env.CLUSTER_URL || "";
 const authToken = process.env.AUTH_TOKEN || "";
 
@@ -23,7 +23,7 @@ const proxyOptions = {
     target: clusterUrl,
     changeOrigin: false,
     secure: false,
-    headers: {authorization:`token=${authToken}`},
+    headers: { authorization: `token=${authToken}` },
 };
 
 console.log(`Starting proxy server to ${clusterUrl} on port:${port}`);
