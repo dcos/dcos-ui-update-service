@@ -72,14 +72,14 @@ func setupUIServiceWithVersion() *UIService {
 
 func TestVersionChange(t *testing.T) {
 	t.Run("Reset if new version is empty", func(t *testing.T) {
-		var resetCalled, updateCalled bool
+		var removeAllCalled, updateCalled bool
 		defer tearDown(t)
 		service := setupTestUIService()
 
 		um := UpdateManagerDouble()
 		um.VersionResult = "2.24.4"
-		um.ResetCall = func() error {
-			resetCalled = true
+		um.RemoveAllCall = func() error {
+			removeAllCalled = true
 			return nil
 		}
 		um.UpdateCall = func(newVer string) {
@@ -89,7 +89,7 @@ func TestVersionChange(t *testing.T) {
 
 		handleVersionChange(service, "")
 
-		tests.H(t).BoolEql(resetCalled, true)
+		tests.H(t).BoolEql(removeAllCalled, true)
 		tests.H(t).BoolEql(updateCalled, false)
 	})
 
