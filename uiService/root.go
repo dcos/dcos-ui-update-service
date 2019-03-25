@@ -54,6 +54,7 @@ func SetupService(cfg *config.Config) (*UIService, error) {
 
 	checkUIDistSymlink(cfg)
 	checkCurrentVersion(updateManager)
+	checkVersionsRoot(cfg)
 	err = deleteOrphanedVersions(cfg, updateManager)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to clean up unused versions")
@@ -171,7 +172,7 @@ func handleVersionChange(service *UIService, newVersion string) {
 				return
 			}
 
-			err = service.UpdateManager.RemoveVersion(currentLocalVersion)
+			err = service.UpdateManager.RemoveAllVersionsExcept("")
 			if err != nil {
 				logrus.WithError(err).Error("Failed to removed current version when reseting to default document root.")
 				return
