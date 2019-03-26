@@ -233,4 +233,10 @@ func TestConfig(t *testing.T) {
 		helper.IsNil(err)
 		helper.BoolEql(cfg.InitUIDistSymlink(), true)
 	})
+
+	t.Run("returns ErrPotentiallyDangerousVersionsRoot when versions-root is empty", func(t *testing.T) {
+		_, err := Parse([]string{"--" + optVersionsRoot, ""})
+		tests.H(t).NotNil(err)
+		tests.H(t).StringContains(err.Error(), "potentially dangerous versions-root")
+	})
 }

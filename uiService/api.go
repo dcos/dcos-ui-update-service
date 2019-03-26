@@ -133,12 +133,7 @@ func resetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		if UIVersion(currentVersion) == PreBundledUIVersion {
-			w.Header().Add("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
-			return
-		}
+
 		logrus.WithField("CurrentVersion", currentVersion).Debug("Received reset request.")
 
 		if updatingVersion, lockErr := setServiceUpdating(service, ""); lockErr != nil {
@@ -157,21 +152,25 @@ func resetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http
 		}
 		defer resetServiceFromUpdate(service)
 
-		err = updateServedVersion(service, service.Config.DefaultDocRoot())
+		if UIVersion(currentVersion) != PreBundledUIVersion {
+			err = updateServedVersion(service, service.Config.DefaultDocRoot())
+			if err != nil {
+				logrus.WithError(err).Error("Failed to reset to default document root")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			storeErr := service.VersionStore.UpdateCurrentVersion(PreBundledUIVersion)
+			if storeErr != nil {
+				logrus.WithError(storeErr).Error("Failed to update the version store to the PreBundledUIVersion.")
+			}
+		}
+
+		err = service.UpdateManager.RemoveAllVersionsExcept("")
 		if err != nil {
-			logrus.WithError(err).Error("Failed to reset to default document root")
+			logrus.WithError(err).Error("Failed to remove previous versions when resetting to default document root")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
-		}
-
-		storeErr := service.VersionStore.UpdateCurrentVersion(PreBundledUIVersion)
-		if storeErr != nil {
-			logrus.WithError(storeErr).Error("Failed to update the version store to the PreBundledUIVersion.")
-		}
-
-		err = service.UpdateManager.RemoveVersion(currentVersion)
-		if err != nil {
-			logrus.WithError(err).Error("Failed to remove current version when resetting to default document root")
 		}
 
 		w.Header().Add("Content-Type", "text/plain")

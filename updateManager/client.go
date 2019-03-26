@@ -36,6 +36,8 @@ var (
 	ErrUIPackageAssetBadURI = errors.New("Failed to parse dcos-ui-bundle asset URI")
 	// ErrRemovingVersion occurs if removing the version fails
 	ErrRemovingVersion = errors.New("Failed to remove the version")
+	// ErrReadingVersions occurs if client cannot read versions-root for deleting all
+	ErrReadingVersions = errors.New("Failed to read versions root directory")
 )
 
 // Client handles access to common setup question
@@ -51,6 +53,7 @@ type Client struct {
 type UpdateManager interface {
 	UpdateToVersion(string, func(string) error) error
 	RemoveVersion(string) error
+	RemoveAllVersionsExcept(string) error
 	CurrentVersion() (string, error)
 	PathToCurrentVersion() (string, error)
 }
@@ -213,6 +216,34 @@ func (um *Client) UpdateToVersion(version string, updateCompleteCallback func(st
 		return um.RemoveVersion(currentVersion)
 	}
 
+	return nil
+}
+
+// RemoveAllVersionsExcept deletes all versions except for the specified version
+func (um *Client) RemoveAllVersionsExcept(omitVersion string) error {
+	root := um.Config.VersionsRoot()
+
+	dirContent, readErr := afero.ReadDir(um.Fs, root)
+	if readErr != nil {
+		// return all types of errors
+		logrus.WithError(readErr).Fatal("Unable to read versions-root.")
+		return ErrReadingVersions
+	}
+
+	for _, info := range dirContent {
+		// The starting directory is included in Walk and should be skipped
+		if info.Name() == omitVersion {
+			continue
+		}
+
+		if info.IsDir() {
+			um.RemoveVersion(info.Name())
+		}
+
+		return nil
+	}
+
+	logrus.Info("Removed all versions")
 	return nil
 }
 

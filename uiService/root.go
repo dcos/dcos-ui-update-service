@@ -53,8 +53,12 @@ func SetupService(cfg *config.Config) (*UIService, error) {
 	}
 
 	checkUIDistSymlink(cfg)
-	checkVersionsRoot(cfg)
 	checkCurrentVersion(updateManager)
+	checkVersionsRoot(cfg)
+	err = deleteOrphanedVersions(cfg, updateManager)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to clean up unused versions")
+	}
 
 	return service, nil
 }
@@ -112,6 +116,16 @@ func checkCurrentVersion(updateManager *updateManager.Client) {
 	}
 }
 
+func deleteOrphanedVersions(cfg *config.Config, updateManager *updateManager.Client) error {
+	version, err := updateManager.CurrentVersion()
+	if err != nil {
+		return err
+	}
+
+	err = updateManager.RemoveAllVersionsExcept(version)
+	return err
+}
+
 func checkVersionsRoot(cfg *config.Config) {
 	logger := logrus.WithFields(logrus.Fields{"VersionsRoot": cfg.VersionsRoot()})
 	if _, err := os.Stat(cfg.VersionsRoot()); os.IsNotExist(err) {
@@ -158,7 +172,7 @@ func handleVersionChange(service *UIService, newVersion string) {
 				return
 			}
 
-			err = service.UpdateManager.RemoveVersion(currentLocalVersion)
+			err = service.UpdateManager.RemoveAllVersionsExcept("")
 			if err != nil {
 				logrus.WithError(err).Error("Failed to removed current version when reseting to default document root.")
 				return
