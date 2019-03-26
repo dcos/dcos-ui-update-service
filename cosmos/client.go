@@ -73,7 +73,7 @@ type PackageDetailResponse struct {
 
 // ListPackageVersions retrieves a list of package versions from Cosmos matching the packageName provided
 func (c *Client) ListPackageVersions(packageName string) (*ListVersionResponse, error) {
-	listVersionReq := ListVersionRequest{IncludePackageVersions: true, PackageName: "dcos-ui"}
+	listVersionReq := ListVersionRequest{IncludePackageVersions: true, PackageName: packageName}
 	body, err := json.Marshal(listVersionReq)
 
 	if err != nil {

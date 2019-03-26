@@ -29,6 +29,7 @@ func TestDefaultConfig(t *testing.T) {
 		helper.StringEql(defaults.ZKBasePath(), defaultZKBasePath)
 		helper.StringEql(defaults.ZKAuthInfo(), defaultZKAuthInfo)
 		helper.StringEql(defaults.ZKZnodeOwner(), defaultZKZnodeOwner)
+		helper.StringEql(defaults.PackageName(), defaultPackageName)
 		helper.Int64Eql(defaults.ZKSessionTimeout().Nanoseconds(), defaultZKSessionTimeout.Nanoseconds())
 		helper.Int64Eql(defaults.ZKConnectionTimeout().Nanoseconds(), defaultZKConnectTimeout.Nanoseconds())
 		helper.Int64Eql(defaults.ZKPollingInterval().Nanoseconds(), defaultZKPollingInterval.Nanoseconds())
@@ -200,6 +201,14 @@ func TestConfig(t *testing.T) {
 		helper := tests.H(t)
 		helper.IsNil(err)
 		helper.StringEql(cfg.ZKZnodeOwner(), "testOwner")
+	})
+
+	t.Run("sets PackageName from cli arg", func(t *testing.T) {
+		cfg, err := Parse([]string{"--" + optPackageName, "test-name"})
+
+		helper := tests.H(t)
+		helper.IsNil(err)
+		helper.StringEql(cfg.PackageName(), "test-name")
 	})
 
 	t.Run("sets ZKSessionTimeout from cli arg", func(t *testing.T) {
