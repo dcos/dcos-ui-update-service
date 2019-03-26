@@ -16,7 +16,7 @@ test: lint
 
 .PHONY: lint
 lint: docker-image
-	$(call inDocker,go build ./ && gometalinter --config=.gometalinter.json ./...)
+	$(call inDocker,go build ./ && golangci-lint run)
 
 .PHONY: docker-image
 docker-image:

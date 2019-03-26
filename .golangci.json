@@ -1,0 +1,38 @@
+{
+    "run": {
+        "deadline": "5m",
+        "tests": false,
+        "skip-files": [
+            ".*/pkg/.*"
+        ]
+    },
+    "linters-settings": {
+        "lll": {
+            "line-length": 150
+        },
+        "gocyclo": {
+            "min-complexity": 20
+        }
+    },
+    "linters": {
+        "disable-all": true,
+        "enable": [
+            "deadcode",
+            "goconst",
+            "gocyclo",
+            "goimports",
+            "golint",
+            "gofmt",
+            "ineffassign",
+            "interfacer",
+            "lll",
+            "misspell",
+            "structcheck",
+            "unconvert",
+            "unparam",
+            "vet",
+            "vetshadow",
+            "varcheck"
+        ]
+    }
+}
