@@ -14,26 +14,45 @@ import (
 type StateListener func(state ClientState)
 
 type Client struct {
-	conn        *zk.Conn
+	conn        ZKConnection
 	acl         []zk.ACL
 	basePath    string
 	nodeOwner   string
 	nodeSchema  string
 	zkState     zk.State
 	clientState ClientState
-	listeners   []StateListener
+	listeners   map[string]StateListener
 	sync.Mutex
 }
 
 type ZKClient interface {
 	Close()
 	ClientState() ClientState
-	RegisterListener(listener StateListener)
+	RegisterListener(id string, listener StateListener)
+	UnregisterListener(id string)
 
-	Exists(path string) (bool, error)
-	Get(path string) ([]byte, error)
+	Exists(path string) (bool, int32, error)
+	existsW(path string) (bool, int32, <-chan zk.Event, error)
+	Get(path string) ([]byte, int32, error)
+	getW(path string) ([]byte, int32, <-chan zk.Event, error)
 	Create(path string, data []byte, perms []int32) error
-	Set(path string, data []byte) error
+	Set(path string, data []byte) (int32, error)
+	Children(path string) ([]string, int32, error)
+	childrenW(path string) ([]string, int32, <-chan zk.Event, error)
+}
+
+type ZKConnection interface {
+	AddAuth(scheme string, auth []byte) error
+	Children(path string) ([]string, *zk.Stat, error)
+	ChildrenW(path string) ([]string, *zk.Stat, <-chan zk.Event, error)
+	Close()
+	Create(path string, data []byte, flags int32, acl []zk.ACL) (string, error)
+	Delete(path string, version int32) error
+	Exists(path string) (bool, *zk.Stat, error)
+	ExistsW(path string) (bool, *zk.Stat, <-chan zk.Event, error)
+	Get(path string) ([]byte, *zk.Stat, error)
+	GetW(path string) ([]byte, *zk.Stat, <-chan zk.Event, error)
+	Set(path string, data []byte, version int32) (*zk.Stat, error)
 }
 
 var (
@@ -87,37 +106,79 @@ func (c *Client) ClientState() ClientState {
 	return c.clientState
 }
 
-func (c *Client) Exists(path string) (bool, error) {
-	found, _, err := c.conn.Exists(path)
-	return found, err
+func (c *Client) Exists(path string) (bool, int32, error) {
+	found, stat, err := c.conn.Exists(path)
+	return found, stat.Version, err
 }
 
-func (c *Client) Get(path string) ([]byte, error) {
-	data, _, err := c.conn.Get(path)
-	return data, err
+func (c *Client) existsW(path string) (bool, int32, <-chan zk.Event, error) {
+	found, stat, channel, err := c.conn.ExistsW(path)
+	return found, stat.Version, channel, err
+}
+
+func (c *Client) Get(path string) ([]byte, int32, error) {
+	data, stat, err := c.conn.Get(path)
+	return data, stat.Version, err
+}
+
+func (c *Client) getW(path string) ([]byte, int32, <-chan zk.Event, error) {
+	data, stat, channel, err := c.conn.GetW(path)
+	return data, stat.Version, channel, err
 }
 
 func (c *Client) Create(path string, data []byte, perms []int32) error {
 	return c.create(path, data, perms)
 }
 
-func (c *Client) Set(path string, data []byte) error {
-	_, err := c.conn.Set(path, data, zkNoVersion)
-	return err
+func (c *Client) Set(path string, data []byte) (int32, error) {
+	_, stat, err := c.conn.Get(path)
+	if err != nil {
+		return zkNoVersion, err
+	}
+	stat, err = c.conn.Set(path, data, stat.Version)
+	return stat.Version, err
+}
+
+func (c *Client) Children(path string) ([]string, int32, error) {
+	children, stat, err := c.conn.Children(path)
+	return children, stat.Cversion, err
+}
+
+func (c *Client) childrenW(path string) ([]string, int32, <-chan zk.Event, error) {
+	children, stat, channel, err := c.conn.ChildrenW(path)
+	return children, stat.Cversion, channel, err
 }
 
 // Delete removes a node at the path provided
 func (c *Client) Delete(path string) error {
-	return c.conn.Delete(path, zkNoVersion)
+	_, stat, err := c.conn.Get(path)
+	if err != nil {
+		return err
+	}
+	return c.conn.Delete(path, stat.Version)
 }
 
-// RegisterListener adds the specified listener and also sets the current state
-func (c *Client) RegisterListener(listener StateListener) {
+// RegisterListener adds the specified listener and also sends the current state to the listener
+func (c *Client) RegisterListener(id string, listener StateListener) {
 	c.Lock()
 	defer c.Unlock()
-	c.listeners = append(c.listeners, listener)
-	// always send the client state the first time
-	listener(c.clientState)
+	if _, ok := c.listeners[id]; ok {
+		// Listener with id is already registered, replace listener, but don't call it
+		c.listeners[id] = listener
+	} else {
+		c.listeners[id] = listener
+		// always send the client state the first time
+		listener(c.clientState)
+	}
+}
+
+// UnregisterListener removed a registered listener based on its ID
+func (c *Client) UnregisterListener(id string) {
+	c.Lock()
+	defer c.Unlock()
+	if _, ok := c.listeners[id]; ok {
+		delete(c.listeners, id)
+	}
 }
 
 // private functions
@@ -148,6 +209,7 @@ func connect(config zkConfig) (*Client, error) {
 				Perms:  zk.PermAll,
 			},
 		},
+		listeners: make(map[string]StateListener),
 	}
 	client.conn, _, err = zk.Connect([]string{config.Address},
 		config.SessionTimeout,
@@ -218,6 +280,7 @@ func (c *Client) eventCallback(sessionEstablished chan struct{}) zk.EventCallbac
 	return func(e zk.Event) {
 		c.Lock()
 		defer c.Unlock()
+		stateChange := false
 		c.zkState = e.State
 		// signal that the ZK client has connected and has a session for the first time.
 		switch e.State {
@@ -226,11 +289,15 @@ func (c *Client) eventCallback(sessionEstablished chan struct{}) zk.EventCallbac
 				close(sessionEstablished)
 			})
 			c.clientState = Connected
+			stateChange = true
 		case zk.StateDisconnected:
 			c.clientState = Disconnected
+			stateChange = true
 		}
-		for _, listener := range c.listeners {
-			listener(c.clientState)
+		if stateChange {
+			for _, listener := range c.listeners {
+				go listener(c.clientState)
+			}
 		}
 		if e.Err != nil {
 			log.WithError(e.Err).Tracef("ZK event: %s %s %s %s", e.Type, e.State, e.Path, e.Server)

@@ -10,7 +10,6 @@ import (
 	"github.com/dcos/dcos-ui-update-service/zookeeper"
 	"github.com/jpillora/backoff"
 	"github.com/pkg/errors"
-	"github.com/samuel/go-zookeeper/zk"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,19 +22,13 @@ type zkVersionStore struct {
 	zkClientState         zookeeper.ClientState
 	zkBasePath            string
 	versionPath           string
-	watchState            versionWatchState
+	zkPollingInterval     time.Duration
+	versionWatcher        zookeeper.ValueNodeWatcher
 }
 
 type zkUIVersion struct {
 	currentVersion UIVersion
 	initialized    bool
-	sync.Mutex
-}
-
-type versionWatchState struct {
-	active          bool
-	disconnected    chan struct{}
-	pollingInterval time.Duration
 	sync.Mutex
 }
 
@@ -58,12 +51,10 @@ func NewZKVersionStore(cfg *config.Config) VersionStore {
 			currentVersion: PreBundledUIVersion,
 			initialized:    false,
 		},
-		zkBasePath:  cfg.ZKBasePath(),
-		versionPath: makeVersionPath(cfg.ZKBasePath()),
-		watchState: versionWatchState{
-			active:          false,
-			pollingInterval: cfg.ZKPollingInterval(),
-		},
+		zkBasePath:        cfg.ZKBasePath(),
+		versionPath:       makeVersionPath(cfg.ZKBasePath()),
+		zkPollingInterval: cfg.ZKPollingInterval(),
+		versionWatcher:    nil,
 	}
 	go store.connectAndInitZKAsync(cfg)
 	return store
@@ -80,7 +71,7 @@ func (zks *zkVersionStore) UpdateCurrentVersion(newVersion UIVersion) error {
 		return ErrZookeeperNotConnected
 	}
 
-	err := zks.client.Set(zks.versionPath, []byte(newVersion))
+	_, err := zks.client.Set(zks.versionPath, []byte(newVersion))
 	if err != nil {
 		return errors.Wrap(err, "Failed to create version in ZK, not able to set the version node")
 	}
@@ -138,7 +129,7 @@ func (zks *zkVersionStore) connectAndInitZKAsync(cfg *config.Config) {
 
 func (zks *zkVersionStore) initZKVersionStore(client zookeeper.ZKClient) {
 	zks.client = client
-	client.RegisterListener(func(state zookeeper.ClientState) {
+	client.RegisterListener("zk-version-store-version", func(state zookeeper.ClientState) {
 		go zks.handleZKStateChange(state)
 	})
 }
@@ -157,9 +148,6 @@ func (zks *zkVersionStore) handleZKStateChange(state zookeeper.ClientState) {
 
 	if oldState == zookeeper.Disconnected {
 		zks.initCurrentVersion()
-	}
-	if state == zookeeper.Disconnected && zks.watchState.active {
-		close(zks.watchState.disconnected)
 	}
 }
 
@@ -182,7 +170,7 @@ func (zks *zkVersionStore) updateLocalCurrentVersion(version UIVersion) {
 }
 
 func (zks *zkVersionStore) getVersionFromZK() (UIVersion, error) {
-	data, err := zks.client.Get(zks.versionPath)
+	data, _, err := zks.client.Get(zks.versionPath)
 	if err != nil {
 		return UIVersion(""), errors.Wrap(err, "unable to get version from zk")
 	}
@@ -193,7 +181,7 @@ func (zks *zkVersionStore) initCurrentVersion() {
 	var version UIVersion
 
 	log.Debug("Getting current ui version from ZK")
-	found, err := zks.client.Exists(zks.versionPath)
+	found, _, err := zks.client.Exists(zks.versionPath)
 	if err != nil {
 		panic(fmt.Sprintf("Error making exists check in zookeeper for ui version node @ '%v'. Error: %v", zks.versionPath, err.Error()))
 	}
@@ -213,7 +201,7 @@ func (zks *zkVersionStore) initCurrentVersion() {
 
 	zks.updateLocalCurrentVersion(version)
 
-	zks.startVersionWatch()
+	zks.createVersionWatcher()
 }
 
 func (zks *zkVersionStore) broadcastVersionChange() {
@@ -233,53 +221,25 @@ func (zks *zkVersionStore) broadcastVersionChange() {
 	}
 }
 
-func (zks *zkVersionStore) startVersionWatch() {
-	if zks.watchState.active {
-		log.Warning("Tried to start version watch while old watch was active")
+func (zks *zkVersionStore) createVersionWatcher() {
+	if zks.versionWatcher != nil {
 		return
 	}
 
-	zks.watchState.Lock()
-	defer zks.watchState.Unlock()
-	zks.watchState.active = true
-	zks.watchState.disconnected = make(chan struct{})
-
-	log.Debug("Version watch started")
-	go zks.pollForVersionChanges()
-}
-
-func (zks *zkVersionStore) stopVersionWatch() {
-	if !zks.watchState.active {
-		log.Warning("Tried to stop version watch with no watch active")
+	watcher, err := zookeeper.CreateValueNodeWatcher(zks.client, zks.versionPath, zks.zkPollingInterval, zks.versionWatcherCallback)
+	if err != nil {
+		// handle error
+		log.WithError(err).Warn("Failed to create ZK node watcher")
 		return
 	}
-	zks.watchState.Lock()
-	defer zks.watchState.Unlock()
-	zks.watchState.active = false
-	zks.watchState.disconnected = nil
-
-	log.Debug("Version watch stopped")
+	zks.versionWatcher = watcher
 }
 
-func (zks *zkVersionStore) pollForVersionChanges() {
-	for {
-		select {
-		case <-zks.watchState.disconnected:
-			zks.stopVersionWatch()
-		case <-time.After(zks.watchState.pollingInterval):
-			version, err := zks.getVersionFromZK()
-			switch err {
-			case nil:
-				currentVersion := zks.localVersion()
-				if version != currentVersion {
-					zks.updateLocalCurrentVersion(version)
-				}
-			case zk.ErrNoNode:
-				log.Error("Version node not found in ZK (was deleted?)")
-			default:
-				log.WithError(err).Error("Version poll get from zk failed.")
-			}
-		}
+func (zks *zkVersionStore) versionWatcherCallback(data []byte) {
+	version := UIVersion(data)
+	currentVersion := zks.localVersion()
+	if version != currentVersion {
+		zks.updateLocalCurrentVersion(version)
 	}
 }
 

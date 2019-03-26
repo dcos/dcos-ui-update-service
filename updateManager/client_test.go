@@ -290,6 +290,45 @@ func TestClientPathToCurrentVersion(t *testing.T) {
 		tests.H(t).ErrEql(err, ErrUIDistSymlinkNotFound)
 	})
 }
+
+func TestClientRemoveAllVersionsExcept(t *testing.T) {
+	t.Run("removes all versions", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {}))
+		// Close the server when test finishes
+		defer server.Close()
+		fs := afero.NewMemMapFs()
+		cfg, _ := config.Parse([]string{
+			"--versions-root", "/ui-versions",
+		})
+
+		cosmosURL, _ := url.Parse(server.URL)
+		cosmos := cosmos.NewClient(cosmosURL)
+
+		loader := Client{
+			Cosmos: cosmos,
+			Loader: downloader.New(fs),
+			Config: cfg,
+			Fs:     fs,
+		}
+
+		deletedVersionPath := "/ui-versions/nightly/dist"
+		fs.MkdirAll(deletedVersionPath, 0755)
+
+		currentVersionPath := "/ui-versions/2.25.3/dist"
+		fs.MkdirAll(currentVersionPath, 0755)
+
+		err := loader.RemoveAllVersionsExcept("2.25.3")
+
+		currentVersionExists, err := afero.DirExists(fs, currentVersionPath)
+		tests.H(t).IsNil(err)
+		tests.H(t).BoolEql(currentVersionExists, true)
+
+		deletedVersionExists, err := afero.DirExists(fs, deletedVersionPath)
+		tests.H(t).IsNil(err)
+		tests.H(t).BoolEql(deletedVersionExists, false)
+	})
+}
+
 func TestClientRemoveVersion(t *testing.T) {
 	t.Parallel()
 
