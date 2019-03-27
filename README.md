@@ -85,7 +85,7 @@ For example `make test` will run linting and tests and it will run all these com
 
 ### Inside docker
 
-You can run the service inside docker by exporting `$CLUSTER_URL`, `$AUTH_TOKEN` and running `docker-compose up`
+You can run the service inside docker by exporting `$CLUSTER_URL`, `$AUTH_TOKEN` and running `make start`
 
 ```bash
 $ export CLUSTER_URL=<path_to_a_cluster>

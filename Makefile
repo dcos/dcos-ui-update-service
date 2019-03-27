@@ -10,6 +10,10 @@ endif
 
 DOCKERFILE_DEV_SHA := $(shell cat Dockerfile.dev go.mod | $(SHA1) | awk '{ print $$1 }')
 
+.PHONY: start 
+start: ## start all containers defined in docker-compose.yml
+	$(shell docker-compose up)
+
 .PHONY: watchTest 
 watchTest: docker.build.dev
 	$(call inDocker,rerun -v --test)
