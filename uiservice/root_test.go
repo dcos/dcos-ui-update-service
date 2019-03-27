@@ -1,4 +1,4 @@
-package uiService
+package uiservice
 
 import (
 	"io/ioutil"
@@ -9,7 +9,7 @@ import (
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/tests"
-	"github.com/dcos/dcos-ui-update-service/updateManager"
+	"github.com/dcos/dcos-ui-update-service/updatemanager"
 	"github.com/spf13/afero"
 )
 
@@ -27,7 +27,7 @@ func setupTestUIService() *UIService {
 		"--master-count-file", "../fixtures/single-master",
 	})
 
-	um, _ := updateManager.NewClient(cfg)
+	um, _ := updatemanager.NewClient(cfg)
 	um.Fs = afero.NewOsFs()
 	os.MkdirAll(cfg.VersionsRoot(), 0755)
 	os.MkdirAll(cfg.DefaultDocRoot(), 0755)
@@ -52,7 +52,7 @@ func setupUIServiceWithVersion() *UIService {
 		"--master-count-file", "../fixtures/single-master",
 	})
 
-	um, _ := updateManager.NewClient(cfg)
+	um, _ := updatemanager.NewClient(cfg)
 	um.Fs = afero.NewOsFs()
 	versionPath := path.Join(path.Join(cfg.VersionsRoot(), "2.24.4"), "dist")
 	os.MkdirAll(cfg.VersionsRoot(), 0755)

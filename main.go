@@ -6,7 +6,7 @@ import (
 
 	"github.com/coreos/go-systemd/activation"
 	"github.com/dcos/dcos-ui-update-service/config"
-	"github.com/dcos/dcos-ui-update-service/uiService"
+	"github.com/dcos/dcos-ui-update-service/uiservice"
 	"github.com/sirupsen/logrus"
 )
 
@@ -21,7 +21,7 @@ func main() {
 
 	initLogging(config)
 
-	service, err := uiService.SetupService(config)
+	service, err := uiservice.SetupService(config)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to initiate ui service")
 	}

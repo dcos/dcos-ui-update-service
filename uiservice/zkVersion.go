@@ -1,4 +1,4 @@
-package uiService
+package uiservice
 
 import (
 	"fmt"
