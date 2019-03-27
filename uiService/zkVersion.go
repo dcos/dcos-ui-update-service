@@ -14,16 +14,14 @@ import (
 )
 
 type zkVersionStore struct {
-	currentVersion        zkUIVersion
-	versionListeners      []VersionChangeListener
-	listeners             versionChangeListeners
-	versionListenersMutex sync.Mutex
-	client                zookeeper.ZKClient
-	zkClientState         zookeeper.ClientState
-	zkBasePath            string
-	versionPath           string
-	zkPollingInterval     time.Duration
-	versionWatcher        zookeeper.ValueNodeWatcher
+	currentVersion    zkUIVersion
+	listeners         versionChangeListeners
+	client            zookeeper.ZKClient
+	zkClientState     zookeeper.ClientState
+	zkBasePath        string
+	versionPath       string
+	zkPollingInterval time.Duration
+	versionWatcher    zookeeper.ValueNodeWatcher
 }
 
 type zkUIVersion struct {
