@@ -55,7 +55,7 @@ func SetupService(cfg *config.Config) (*UIService, error) {
 	checkUIDistSymlink(cfg)
 	checkCurrentVersion(updateManager)
 	checkVersionsRoot(cfg)
-	err = deleteOrphanedVersions(cfg, updateManager)
+	err = deleteOrphanedVersions(updateManager)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to clean up unused versions")
 	}
@@ -116,7 +116,7 @@ func checkCurrentVersion(updateManager *updatemanager.Client) {
 	}
 }
 
-func deleteOrphanedVersions(cfg *config.Config, updateManager *updatemanager.Client) error {
+func deleteOrphanedVersions(updateManager *updatemanager.Client) error {
 	version, err := updateManager.CurrentVersion()
 	if err != nil {
 		return err
