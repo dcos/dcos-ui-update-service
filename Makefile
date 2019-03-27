@@ -12,7 +12,7 @@ DOCKERFILE_DEV_SHA := $(shell cat Dockerfile.dev go.mod | $(SHA1) | awk '{ print
 
 .PHONY: start 
 start: ## start all containers defined in docker-compose.yml
-	$(shell docker-compose up)
+	docker-compose up
 
 .PHONY: watchTest 
 watchTest: docker.build.dev
