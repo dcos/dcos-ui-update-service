@@ -11,9 +11,5 @@ RUN mkdir -p /run/dcos
 ADD . /src
 WORKDIR /src
 
-COPY go.mod .
-COPY go.sum .
-
 RUN go mod download
-RUN go build .
 EXPOSE 5000
