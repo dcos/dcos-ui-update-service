@@ -1,13 +1,17 @@
-CURRENT_DIR=$(shell pwd)
-IMAGE_NAME=dcos/dcos-ui-update-service
-DOCKER_DIR=/src
 
-.PHONY: start 
-start: ## start all containers defined in docker-compose.yml
-  $(shell docker-compose up)
+# detect what platform we're running in so we can use proper command flavors
+OS := $(shell uname -s)
+ifeq ($(OS),Linux)
+sSHA1 := sha1sum
+endif
+ifeq ($(OS),Darwin)
+SHA1 := shasum -a1
+endif
+
+DOCKERFILE_DEV_SHA := $(shell cat Dockerfile.dev go.mod | $(SHA1) | awk '{ print $$1 }')
 
 .PHONY: watchTest 
-watchTest: docker-image 
+watchTest: docker.build.dev
 	$(call inDocker,rerun -v --test)
 
 .PHONY: test
@@ -15,19 +19,23 @@ test: lint
 	$(call inDocker,go test -race -cover ./...)
 
 .PHONY: lint
-lint: docker-image
-	$(call inDocker,go build ./ && gometalinter --config=.gometalinter.json ./...)
+lint: docker.build.dev
+	$(call inDocker,env GOOS=linux GO111MODULE=on go build ./ && gometalinter --config=.gometalinter.json ./...)
 
-.PHONY: docker-image
-docker-image:
-ifndef NO_DOCKER
-	docker build -t $(IMAGE_NAME) -f Dockerfile.dev .
-endif
+.PHONY: docker.build.dev
+docker.build.dev: .docker.build.dev.$(DOCKERFILE_DEV_SHA)
+
+.docker.build.dev.$(DOCKERFILE_DEV_SHA):
+	@$(RM) .docker.build.dev.*
+	@docker build \
+			-t dcos/dcos-ui-update-service-dev:$(DOCKERFILE_DEV_SHA) \
+			-f Dockerfile.dev .
+	@touch $@
 
 .PHONY: build
-build: docker-image
+build: docker.build.dev
 	$(call inDocker,env GOOS=linux GO111MODULE=on go build \
-		-o build/dcos-ui-update-service ./)
+		-o builds/dcos-ui-update-service ./)
 
 .PHONY: clean
 clean:
@@ -39,12 +47,10 @@ ifdef NO_DOCKER
   endef
 else
   define inDocker
-    docker run -p 5000:5000/tcp \
-      -v $(CURRENT_DIR):$(DOCKER_DIR) \
-      -it \
-      --name dcos-ui-service \
-      --rm \
-      $(IMAGE_NAME) \
-    /bin/sh -c "$1"
+    docker run \
+      -v $(CURDIR):/src \
+      -w /src \
+      --rm -it \
+      dcos/dcos-ui-update-service-dev:$(DOCKERFILE_DEV_SHA) /bin/sh -c "$1"
   endef
 endif
