@@ -1,10 +1,10 @@
 main
 coverage.txt
 coverage.xml
-build/
+builds/
 versions/
 dcos-ui-update-service
-application-build-*
+.docker.build.dev*
 testdata/localCosmos/node_modules/
 testdata/localCosmos/package-lock.json
 testdata/docroot/dcos-ui-dist
