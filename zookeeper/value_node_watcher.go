@@ -11,7 +11,7 @@ import (
 )
 
 // ValueNodeWatchListener function signature for value node watcher listner, this is used to invoke a callback when a ZK node changes
-type ValueNodeWatchListener func([]byte)
+type ValueNodeWatchListener func(string, []byte)
 type valueNodeWatcher struct {
 	client       ZKClient
 	nodePath     string
@@ -203,7 +203,7 @@ func (nw *valueNodeWatcher) restartWatchAfterError() {
 }
 
 func (nw *valueNodeWatcher) handlePollTimeout() {
-	nw.log.Debug("Timeout poll of value")
+	nw.log.Trace("Timeout poll of value")
 	found, ver, err := nw.client.Exists(nw.nodePath)
 	if err != nil {
 		nw.log.WithError(err).Warn("Failed to check ZK node exists when polling")
@@ -240,7 +240,7 @@ func (nw *valueNodeWatcher) handleNodeEvent(event zk.Event) {
 		nw.handleDisconnected()
 		return
 	}
-	nw.log.WithField("zk-node-event", event.Type.String()).Debug("Received ZK Node Event")
+	nw.log.WithField("zk-node-event", event.Type.String()).Trace("Received ZK Node Event")
 	switch event.Type {
 	case zk.EventNodeCreated:
 		fallthrough
@@ -310,7 +310,7 @@ func (nw *valueNodeWatcher) handleValueReceived(value []byte, version int32) {
 				"stat-version":         version,
 			},
 		).Debug("Executing listener callback")
-		go nw.listener(nw.value)
+		go nw.listener(nw.nodePath, nw.value)
 	} else {
 		nw.log.Trace("Value matched current value")
 	}

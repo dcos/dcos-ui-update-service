@@ -9,7 +9,7 @@ import (
 )
 
 // ParentNodeWatchListener function signature for parent node watcher listner, this is used to invoke a callback when a ZK node changes
-type ParentNodeWatchListener func([]string)
+type ParentNodeWatchListener func(string, []string)
 
 type parentNodeWatcher struct {
 	client       ZKClient
@@ -86,7 +86,7 @@ func (nw *parentNodeWatcher) Close() {
 
 func (nw *parentNodeWatcher) handleZkStateChange(state ClientState) {
 	if state == Disconnected {
-		nw.log.Debug("ZK Disconnected, stopping node watcher")
+		nw.log.Trace("ZK Disconnected, stopping node watcher")
 		close(nw.disconnected)
 		nw.disconnected = nil
 	}
@@ -95,7 +95,7 @@ func (nw *parentNodeWatcher) handleZkStateChange(state ClientState) {
 			nw.disconnected = make(chan struct{})
 		}
 		if !nw.watchActive {
-			nw.log.Debug("ZK Connected, starting node watcher")
+			nw.log.Trace("ZK Connected, starting node watcher")
 			go nw.startWatch()
 		}
 	}
@@ -180,7 +180,7 @@ func (nw *parentNodeWatcher) restartWatchAfterError() {
 }
 
 func (nw *parentNodeWatcher) handlePollTimeout() {
-	nw.log.Debug("Timeout poll of value")
+	nw.log.Trace("Timeout poll of value")
 	err := nw.getAndUpdateChildren()
 	if err != nil {
 		nw.log.WithError(err).Warn("Failed to get ZK node value when polling")
@@ -188,12 +188,12 @@ func (nw *parentNodeWatcher) handlePollTimeout() {
 }
 
 func (nw *parentNodeWatcher) handleDisconnected() {
-	nw.log.Debug("Lost ZK Connection")
+	nw.log.Trace("Lost ZK Connection")
 	nw.clearWatch()
 }
 
 func (nw *parentNodeWatcher) handleClosed() {
-	nw.log.Debug("Watcher closed")
+	nw.log.Trace("Watcher closed")
 	nw.clearWatch()
 }
 
@@ -240,7 +240,7 @@ func (nw *parentNodeWatcher) handleChildrenReceived(children []string, version i
 				"stat-version":         version,
 			},
 		).Debug("Executing listener callback")
-		go nw.listener(nw.children)
+		go nw.listener(nw.nodePath, nw.children)
 	} else {
 		nw.log.Trace("Value matched current value")
 	}

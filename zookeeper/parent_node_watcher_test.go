@@ -30,7 +30,7 @@ func TestParentNodeWatcher(t *testing.T) {
 	t.Run("returns ErrDisconnected if client is Disconnected", func(t *testing.T) {
 		client := NewFakeZKClient()
 
-		_, err := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(val []string) {})
+		_, err := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(path string, val []string) {})
 
 		tests.H(t).ErrEql(err, ErrDisconnected)
 	})
@@ -40,7 +40,7 @@ func TestParentNodeWatcher(t *testing.T) {
 		client.ClientStateResult = Connected
 		client.ExistsError = errors.New("Boom!!")
 
-		_, err := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(val []string) {})
+		_, err := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(path string, val []string) {})
 
 		tests.H(t).ErrEql(err, ErrFailedToReadNode)
 	})
@@ -50,7 +50,7 @@ func TestParentNodeWatcher(t *testing.T) {
 		client.ClientStateResult = Connected
 		client.ExistsResult = false
 
-		_, err := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(val []string) {})
+		_, err := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(path string, val []string) {})
 
 		tests.H(t).ErrEql(err, ErrNodeDoesNotExist)
 	})
@@ -62,7 +62,7 @@ func TestParentNodeWatcher(t *testing.T) {
 		client.ExistsResult = true
 		client.ChildrenResults = []string{}
 
-		watcher, err := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(val []string) {})
+		watcher, err := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(path string, val []string) {})
 		defer watcher.Close()
 
 		helper.IsNil(err)
@@ -77,7 +77,7 @@ func TestParentNodeWatcher(t *testing.T) {
 		client.ExistsResult = true
 		client.ChildrenResults = []string{}
 
-		watcher, _ := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(val []string) {})
+		watcher, _ := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(path string, val []string) {})
 		defer watcher.Close()
 
 		parentWatcher, _ := watcher.(*parentNodeWatcher)
@@ -96,7 +96,7 @@ func TestParentNodeWatcher(t *testing.T) {
 		var listenerCalls [][]string
 		wg.Add(1)
 
-		watcher, _ := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(val []string) {
+		watcher, _ := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(path string, val []string) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)
@@ -139,7 +139,7 @@ func TestParentNodeWatcher(t *testing.T) {
 		var listenerCalls [][]string
 		wg.Add(1)
 
-		watcher, _ := CreateParentNodeWatcher(client, "/foo", shortPollTimeout, func(val []string) {
+		watcher, _ := CreateParentNodeWatcher(client, "/foo", shortPollTimeout, func(path string, val []string) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)
@@ -174,7 +174,7 @@ func TestParentNodeWatcher(t *testing.T) {
 		var listenerCalls [][]string
 		wg.Add(1)
 
-		watcher, _ := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(val []string) {
+		watcher, _ := CreateParentNodeWatcher(client, "/foo", pollTimeout, func(path string, val []string) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)

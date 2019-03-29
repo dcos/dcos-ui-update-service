@@ -30,7 +30,7 @@ func TestValueNodeWatcher(t *testing.T) {
 	t.Run("returns ErrDisconnected if client is Disconnected", func(t *testing.T) {
 		client := NewFakeZKClient()
 
-		_, err := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(val []byte) {})
+		_, err := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(path string, val []byte) {})
 
 		tests.H(t).ErrEql(err, ErrDisconnected)
 	})
@@ -40,7 +40,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		client.ClientStateResult = Connected
 		client.ExistsError = errors.New("Boom!!")
 
-		_, err := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(val []byte) {})
+		_, err := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(path string, val []byte) {})
 
 		tests.H(t).ErrEql(err, ErrFailedToReadNode)
 	})
@@ -51,7 +51,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		client.ClientStateResult = Connected
 		client.ExistsResult = false
 
-		watcher, err := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(val []byte) {})
+		watcher, err := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(path string, val []byte) {})
 		defer watcher.Close()
 
 		helper.IsNil(err)
@@ -64,7 +64,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		client.ClientStateResult = Connected
 		client.ExistsResult = false
 
-		watcher, err := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(val []byte) {})
+		watcher, err := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(path string, val []byte) {})
 		defer watcher.Close()
 
 		helper.IsNil(err)
@@ -76,7 +76,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		client.ClientStateResult = Connected
 		client.ExistsResult = false
 
-		watcher, _ := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(val []byte) {})
+		watcher, _ := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(path string, val []byte) {})
 		defer watcher.Close()
 
 		valueWatcher, _ := watcher.(*valueNodeWatcher)
@@ -94,7 +94,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		var listenerMutex sync.Mutex
 		wg.Add(1)
 		var listenerCalls [][]byte
-		watcher, _ := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(val []byte) {
+		watcher, _ := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(path string, val []byte) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)
@@ -135,7 +135,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		var listenerMutex sync.Mutex
 		wg.Add(1)
 		var listenerCalls [][]byte
-		watcher, _ := CreateValueNodeWatcher(client, "/foo", shortPollTimeout, func(val []byte) {
+		watcher, _ := CreateValueNodeWatcher(client, "/foo", shortPollTimeout, func(path string, val []byte) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)
@@ -170,7 +170,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		var listenerMutex sync.Mutex
 		wg.Add(1)
 		var listenerCalls [][]byte
-		watcher, _ := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(val []byte) {
+		watcher, _ := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(path string, val []byte) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)
@@ -208,7 +208,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		var listenerMutex sync.Mutex
 		wg.Add(1)
 		var listenerCalls [][]byte
-		callback := func(val []byte) {
+		callback := func(path string, val []byte) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)
@@ -242,7 +242,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		var listenerMutex sync.Mutex
 		wg.Add(1)
 		var listenerCalls [][]byte
-		watcher, _ := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(val []byte) {
+		watcher, _ := CreateValueNodeWatcher(client, "/foo", pollTimeout, func(path string, val []byte) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)
@@ -284,7 +284,7 @@ func TestValueNodeWatcher(t *testing.T) {
 		var listenerMutex sync.Mutex
 		wg.Add(1)
 		var listenerCalls [][]byte
-		watcher, _ := CreateValueNodeWatcher(client, "/foo", shortPollTimeout, func(val []byte) {
+		watcher, _ := CreateValueNodeWatcher(client, "/foo", shortPollTimeout, func(path string, val []byte) {
 			listenerMutex.Lock()
 			defer listenerMutex.Unlock()
 			listenerCalls = append(listenerCalls, val)

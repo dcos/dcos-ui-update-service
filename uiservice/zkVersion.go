@@ -233,7 +233,7 @@ func (zks *zkVersionStore) createVersionWatcher() {
 	zks.versionWatcher = watcher
 }
 
-func (zks *zkVersionStore) versionWatcherCallback(data []byte) {
+func (zks *zkVersionStore) versionWatcherCallback(path string, data []byte) {
 	version := UIVersion(data)
 	currentVersion := zks.localVersion()
 	if version != currentVersion {
