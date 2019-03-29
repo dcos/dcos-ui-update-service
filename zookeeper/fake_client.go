@@ -12,6 +12,7 @@ type FakeZKClient struct {
 	CreateError   error
 	SetError      error
 	ChildrenError error
+	DeleteError   error
 
 	ClientStateResult ClientState
 	IDListeners       map[string]StateListener
@@ -24,6 +25,7 @@ type FakeZKClient struct {
 
 	CreateCall func(string, []byte, []int32)
 	SetCall    func(string, []byte)
+	DeleteCall func(string)
 	sync.Mutex
 }
 
@@ -32,6 +34,10 @@ func NewFakeZKClient() *FakeZKClient {
 		IDListeners:  make(map[string]StateListener),
 		EventChannel: make(chan zk.Event, 1),
 	}
+}
+
+func (zkc *FakeZKClient) BasePath() string {
+	return "/"
 }
 
 func (zkc *FakeZKClient) Close() {}
@@ -135,4 +141,13 @@ func (zkc *FakeZKClient) childrenW(path string) ([]string, int32, <-chan zk.Even
 	zkc.Lock()
 	defer zkc.Unlock()
 	return val, ver, zkc.EventChannel, err
+}
+
+func (zkc *FakeZKClient) Delete(path string) error {
+	zkc.Lock()
+	defer zkc.Unlock()
+	if zkc.DeleteCall != nil {
+		zkc.DeleteCall(path)
+	}
+	return zkc.DeleteError
 }

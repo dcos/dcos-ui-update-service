@@ -26,6 +26,7 @@ type Client struct {
 }
 
 type ZKClient interface {
+	BasePath() string
 	Close()
 	ClientState() ClientState
 	RegisterListener(id string, listener StateListener)
@@ -39,6 +40,7 @@ type ZKClient interface {
 	Set(path string, data []byte) (int32, error)
 	Children(path string) ([]string, int32, error)
 	childrenW(path string) ([]string, int32, <-chan zk.Event, error)
+	Delete(path string) error
 }
 
 type ZKConnection interface {
@@ -96,6 +98,10 @@ func Connect(cfg *config.Config) (*Client, error) {
 		SessionTimeout: cfg.ZKSessionTimeout(),
 		ConnectTimeout: cfg.ZKConnectionTimeout(),
 	})
+}
+
+func (c *Client) BasePath() string {
+	return c.basePath
 }
 
 func (c *Client) Close() {
