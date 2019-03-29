@@ -9,4 +9,6 @@ RUN mkdir -p /run/dcos
 
 ADD . /src
 WORKDIR /src
+
+RUN go mod download
 EXPOSE 5000
