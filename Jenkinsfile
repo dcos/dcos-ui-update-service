@@ -37,7 +37,7 @@ pipeline {
       parallel {
         stage("Lint") {
           steps {
-            sh 'gometalinter --config=.gometalinter.json ./...'
+            sh 'golangci-lint run'
           }
         }
 

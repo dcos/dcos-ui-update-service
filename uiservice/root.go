@@ -1,4 +1,4 @@
-package uiService
+package uiservice
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/dcos"
-	"github.com/dcos/dcos-ui-update-service/updateManager"
+	"github.com/dcos/dcos-ui-update-service/updatemanager"
 	"github.com/gorilla/handlers"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -21,7 +21,7 @@ import (
 type UIService struct {
 	Config *config.Config
 
-	UpdateManager updateManager.UpdateManager
+	UpdateManager updatemanager.UpdateManager
 
 	MasterCounter dcos.MasterCounter
 
@@ -35,7 +35,7 @@ type UIService struct {
 }
 
 func SetupService(cfg *config.Config) (*UIService, error) {
-	updateManager, err := updateManager.NewClient(cfg)
+	updateManager, err := updatemanager.NewClient(cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create update manager")
 	}
@@ -55,7 +55,7 @@ func SetupService(cfg *config.Config) (*UIService, error) {
 	checkUIDistSymlink(cfg)
 	checkCurrentVersion(updateManager)
 	checkVersionsRoot(cfg)
-	err = deleteOrphanedVersions(cfg, updateManager)
+	err = deleteOrphanedVersions(updateManager)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to clean up unused versions")
 	}
@@ -101,7 +101,7 @@ func checkUIDistSymlink(cfg *config.Config) {
 	}
 }
 
-func checkCurrentVersion(updateManager *updateManager.Client) {
+func checkCurrentVersion(updateManager *updatemanager.Client) {
 	version, err := updateManager.CurrentVersion()
 	if err != nil {
 		logrus.WithError(err).Warn("Error retrieving the current package version from update manager")
@@ -116,7 +116,7 @@ func checkCurrentVersion(updateManager *updateManager.Client) {
 	}
 }
 
-func deleteOrphanedVersions(cfg *config.Config, updateManager *updateManager.Client) error {
+func deleteOrphanedVersions(updateManager *updatemanager.Client) error {
 	version, err := updateManager.CurrentVersion()
 	if err != nil {
 		return err

@@ -1,4 +1,4 @@
-package uiService
+package uiservice
 
 type UIVersion string
 

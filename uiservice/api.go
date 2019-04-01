@@ -1,11 +1,11 @@
-package uiService
+package uiservice
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
 
-	"github.com/dcos/dcos-ui-update-service/updateManager"
+	"github.com/dcos/dcos-ui-update-service/updatemanager"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -110,7 +110,7 @@ func updateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(fmt.Sprintf("Update to %s completed", version)))
 			return
-		case updateManager.ErrRequestedVersionNotFound:
+		case updatemanager.ErrRequestedVersionNotFound:
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		default:

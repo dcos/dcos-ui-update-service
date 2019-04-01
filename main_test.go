@@ -10,8 +10,8 @@ import (
 	"github.com/dcos/dcos-ui-update-service/config"
 	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/tests"
-	"github.com/dcos/dcos-ui-update-service/uiService"
-	"github.com/dcos/dcos-ui-update-service/updateManager"
+	"github.com/dcos/dcos-ui-update-service/uiservice"
+	"github.com/dcos/dcos-ui-update-service/updatemanager"
 	"github.com/spf13/afero"
 )
 
@@ -60,7 +60,7 @@ func listen() (net.Listener, error) {
 	return net.Listen("tcp", "127.0.0.1:0")
 }
 
-func setupTestUIService() *uiService.UIService {
+func setupTestUIService() *uiservice.UIService {
 	cfg, _ := config.Parse([]string{
 		"--default-ui-path", "../testdata/uiserv-sandbox/dcos-ui",
 		"--versions-root", "../testdata/uiserv-sandbox/ui-versions",
@@ -69,14 +69,14 @@ func setupTestUIService() *uiService.UIService {
 		"--master-count-file", "../fixtures/single-master",
 	})
 
-	um, _ := updateManager.NewClient(cfg)
+	um, _ := updatemanager.NewClient(cfg)
 	um.Fs = afero.NewOsFs()
 
 	os.MkdirAll(cfg.VersionsRoot(), 0755)
 	os.MkdirAll(cfg.DefaultDocRoot(), 0755)
 	os.Symlink(cfg.DefaultDocRoot(), cfg.UIDistSymlink())
 
-	return &uiService.UIService{
+	return &uiservice.UIService{
 		Config:        cfg,
 		UpdateManager: um,
 		MasterCounter: dcos.DCOS{
@@ -92,27 +92,27 @@ func tearDown(t *testing.T) {
 }
 
 type fakeVersionStore struct {
-	VersionResult uiService.UIVersion
+	VersionResult uiservice.UIVersion
 	UpdateError   error
 }
 
 func VersionStoreDouble() *fakeVersionStore {
 	return &fakeVersionStore{
-		VersionResult: uiService.UIVersion("2.24.4"),
+		VersionResult: uiservice.UIVersion("2.24.4"),
 	}
 }
 
-func (vs *fakeVersionStore) CurrentVersion() (uiService.UIVersion, error) {
+func (vs *fakeVersionStore) CurrentVersion() (uiservice.UIVersion, error) {
 	return vs.VersionResult, nil
 }
 
-func (vs *fakeVersionStore) UpdateCurrentVersion(newVersion uiService.UIVersion) error {
+func (vs *fakeVersionStore) UpdateCurrentVersion(newVersion uiservice.UIVersion) error {
 	if vs.UpdateError != nil {
 		return vs.UpdateError
 	}
 	return nil
 }
 
-func (vs *fakeVersionStore) WatchForVersionChange(listener uiService.VersionChangeListener) error {
+func (vs *fakeVersionStore) WatchForVersionChange(listener uiservice.VersionChangeListener) error {
 	return nil
 }

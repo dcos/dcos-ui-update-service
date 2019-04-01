@@ -4,10 +4,10 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 
@@ -102,7 +102,7 @@ func (d *Client) extractTarGzToDir(dest string, payload []byte) error {
 	}
 }
 
-func (d *Client) DownloadAndUnpack(fileURL *url.URL, targetDirectory string) error {
+func (d *Client) DownloadAndUnpack(fileURL fmt.Stringer, targetDirectory string) error {
 	req, err := http.NewRequest("GET", fileURL.String(), nil)
 	if err != nil {
 		return err

@@ -24,7 +24,7 @@ test: lint
 
 .PHONY: lint
 lint: docker.build.dev
-	$(call inDocker,env GOOS=linux GO111MODULE=on go build ./ && gometalinter --config=.gometalinter.json ./...)
+	$(call inDocker,env GOOS=linux GO111MODULE=on go build ./... && golangci-lint run)
 
 .PHONY: docker.build.dev
 docker.build.dev: .docker.build.dev.$(DOCKERFILE_DEV_SHA)

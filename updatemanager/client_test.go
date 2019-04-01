@@ -1,4 +1,4 @@
-package updateManager
+package updatemanager
 
 import (
 	"errors"

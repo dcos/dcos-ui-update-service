@@ -1,4 +1,4 @@
-package uiService
+package uiservice
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/dcos/dcos-ui-update-service/tests"
-	"github.com/dcos/dcos-ui-update-service/updateManager"
+	"github.com/dcos/dcos-ui-update-service/updatemanager"
 )
 
 func TestRouter(t *testing.T) {
@@ -194,13 +194,13 @@ func TestRouter(t *testing.T) {
 		service := setupTestUIService()
 
 		um := UpdateManagerDouble()
-		um.UpdateError = updateManager.ErrRequestedVersionNotFound
+		um.UpdateError = updatemanager.ErrRequestedVersionNotFound
 		service.UpdateManager = um
 
 		rr := httptest.NewRecorder()
 		newRouter(service).ServeHTTP(rr, req)
 
 		tests.H(t).IntEql(rr.Code, http.StatusBadRequest)
-		tests.H(t).StringContains(rr.Body.String(), updateManager.ErrRequestedVersionNotFound.Error())
+		tests.H(t).StringContains(rr.Body.String(), updatemanager.ErrRequestedVersionNotFound.Error())
 	})
 }
