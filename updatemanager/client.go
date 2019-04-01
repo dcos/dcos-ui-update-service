@@ -6,10 +6,14 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/dcos/dcos-ui-update-service/constants"
 	"github.com/dcos/dcos-ui-update-service/cosmos"
+	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/downloader"
+	"github.com/dcos/dcos-ui-update-service/zookeeper"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -42,24 +46,34 @@ var (
 
 // Client handles access to common setup question
 type Client struct {
-	Cosmos      *cosmos.Client
-	Loader      *downloader.Client
-	UniverseURL *url.URL
-	Config      *config.Config
-	Fs          afero.Fs
+	Cosmos           *cosmos.Client
+	Loader           *downloader.Client
+	UniverseURL      *url.URL
+	Config           *config.Config
+	Fs               afero.Fs
+	dcos             dcos.DCOS
+	zkClient         zookeeper.ZKClient
+	opLeader         *UpdateOperationLeader
+	cStatWatcher     zookeeper.ValueNodeWatcher
+	clusterStatus    UpdateServiceStatus
+	operationHandler UpdateOperationHandler
 	sync.Mutex
 }
 
 type UpdateManager interface {
-	UpdateToVersion(string, func(string) error) error
+	CurrentVersion() (string, error)
+	ClusterStatus() UpdateServiceStatus
+	LeadUIReset(timeout <-chan struct{}) <-chan *UpdateResult
+	PathToCurrentVersion() (string, error)
 	RemoveVersion(string) error
 	RemoveAllVersionsExcept(string) error
-	CurrentVersion() (string, error)
-	PathToCurrentVersion() (string, error)
+	UpdateServedVersion(string) error
+	UpdateToVersion(string, func(string) error) error
+	ZKConnected(zookeeper.ZKClient)
 }
 
 // NewClient creates a new instance of Client
-func NewClient(cfg *config.Config) (*Client, error) {
+func NewClient(cfg *config.Config, dcos dcos.DCOS) (*Client, error) {
 	universeURL, err := url.Parse(cfg.UniverseURL())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse configured Universe URL")
@@ -67,11 +81,15 @@ func NewClient(cfg *config.Config) (*Client, error) {
 	fs := afero.NewOsFs()
 
 	return &Client{
-		Cosmos:      cosmos.NewClient(universeURL),
-		Loader:      downloader.New(fs),
-		UniverseURL: universeURL,
-		Config:      cfg,
-		Fs:          fs,
+		Cosmos:           cosmos.NewClient(universeURL),
+		Loader:           downloader.New(fs),
+		UniverseURL:      universeURL,
+		Config:           cfg,
+		Fs:               fs,
+		dcos:             dcos,
+		zkClient:         nil,
+		clusterStatus:    idleServiceStatus(),
+		operationHandler: nil,
 	}, nil
 }
 
@@ -157,6 +175,30 @@ func (um *Client) PathToCurrentVersion() (string, error) {
 		return "", ErrUIDistSymlinkNotFound
 	}
 	return servedVersionPath, nil
+}
+
+func (um *Client) ClusterStatus() UpdateServiceStatus {
+	um.Lock()
+	defer um.Unlock()
+	result := um.clusterStatus
+
+	return result
+}
+
+func (um *Client) UpdateServedVersion(newVersionPath string) error {
+	// Create temporary symlink
+	if err := os.Symlink(newVersionPath, um.Config.UIDistStageSymlink()); err != nil {
+		return errors.Wrap(err, "unable to create temporary staging symlink for new version")
+	}
+	// Swap serving symlink with temp
+	if err := os.Rename(um.Config.UIDistStageSymlink(), um.Config.UIDistSymlink()); err != nil {
+		// remove/unlink temporary symlink
+		if removeErr := os.Remove(um.Config.UIDistStageSymlink()); removeErr != nil {
+			logrus.WithError(removeErr).Error("Failed to remove new version staged symlink, after failing to swap symlinks for an update.")
+		}
+		return errors.Wrap(err, "unable to swap staged new version symlink with dist symlink")
+	}
+	return nil
 }
 
 // UpdateToVersion updates the ui to the given version
@@ -266,4 +308,139 @@ func (um *Client) RemoveVersion(version string) error {
 	}
 	logrus.Infof("Removed version v%s", version)
 	return nil
+}
+
+func (um *Client) ZKConnected(client zookeeper.ZKClient) {
+	um.Lock()
+	defer um.Unlock()
+
+	um.zkClient = client
+	go um.createClusterStatusWatcher()
+}
+
+func (um *Client) LeadUIReset(timeout <-chan struct{}) <-chan *UpdateResult {
+	result := make(chan *UpdateResult)
+
+	go um.leadUIReset(result, timeout)
+
+	return result
+}
+
+func (um *Client) createClusterStatusWatcher() {
+	for {
+		watcher, err := zookeeper.CreateValueNodeWatcher(
+			um.zkClient,
+			path.Join(um.zkClient.BasePath(), constants.ClusterStatusNode),
+			um.Config.ZKPollingInterval(),
+			um.clusterStatusReceived,
+		)
+		if err == nil {
+			um.Lock()
+			um.cStatWatcher = watcher
+			um.Unlock()
+			return
+		}
+		logrus.WithError(err).Warn("Failed to create cluster status watcher")
+		<-time.After(constants.ZKNodeWriteRetryInterval)
+	}
+}
+
+func (um *Client) leadUIReset(response chan *UpdateResult, timeout <-chan struct{}) {
+	result := &UpdateResult{
+		Operation:  ResetUIOperation,
+		Successful: false,
+	}
+	defer func() {
+		logrus.Debug("Sending reset response to API")
+		response <- result
+	}()
+
+	leader, err := um.newResetLeader()
+	if err != nil {
+		result.Error = err
+		result.Message = err.Error()
+		return
+	}
+	defer leader.Cleanup()
+	err = leader.SetupNodeStatusWatcher()
+	if err != nil {
+		result.Error = err
+		result.Message = "Failed to setup watchers to syncronize reset"
+		return
+	}
+	err = leader.LockClusterForReset()
+	if err != nil {
+		result.Error = err
+		result.Message = "Failed to lock cluster for reset"
+		return
+	}
+	um.Lock()
+	um.opLeader = leader
+	um.Unlock()
+
+	select {
+	case <-timeout:
+		return
+	case resetSuccess := <-leader.UpdateComplete:
+		result.Successful = resetSuccess
+		if resetSuccess {
+			result.Message = "OK"
+		} else {
+			result.Message = "Reset failed"
+		}
+		break
+	}
+	um.Lock()
+	um.opLeader = nil
+	um.Unlock()
+}
+
+func (um *Client) clusterStatusReceived(path string, value []byte) {
+	clusterStatus := parseStatusValue(string(value))
+	lastStatus := um.ClusterStatus()
+	if clusterStatus == lastStatus {
+		um.updateClusterStatus(clusterStatus)
+		return
+	}
+
+	if lastStatus.Operation == IdleOperation {
+		var opHandler UpdateOperationHandler
+		var operationCompleteChannel <-chan struct{}
+		var err error
+		switch clusterStatus.Operation {
+		case ResetUIOperation:
+			opHandler, operationCompleteChannel, err = um.newResetOperation(clusterStatus)
+			break
+		case UpdateVersionOperation:
+			break
+		}
+		if err != nil {
+			logrus.WithError(err).Warn("Error creating update operation")
+			//TODO: handle error creating operation handler
+		}
+		if opHandler != nil {
+			um.Lock()
+			um.operationHandler = opHandler
+			um.Unlock()
+			go um.waitForOperationCompletion(operationCompleteChannel)
+		}
+	}
+	um.updateClusterStatus(clusterStatus)
+}
+
+func (um *Client) updateClusterStatus(status UpdateServiceStatus) {
+	um.Lock()
+	defer um.Unlock()
+	um.clusterStatus = status
+	if um.operationHandler != nil {
+		go um.operationHandler.ClusterStatusReceived(status)
+	}
+}
+
+func (um *Client) waitForOperationCompletion(completionChannel <-chan struct{}) {
+	<-completionChannel
+
+	um.Lock()
+	um.operationHandler = nil
+	um.Unlock()
 }

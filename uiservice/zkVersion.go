@@ -43,7 +43,7 @@ var (
 
 // NewZKVersionStore creates a new zookeeper version store from the config.
 // zookeeper connection will be asyncronously initiated.
-func NewZKVersionStore(cfg *config.Config) VersionStore {
+func NewZKVersionStore(cfg *config.Config, connectedCB func(zookeeper.ZKClient)) VersionStore {
 	store := &zkVersionStore{
 		currentVersion: zkUIVersion{
 			currentVersion: PreBundledUIVersion,
@@ -54,8 +54,49 @@ func NewZKVersionStore(cfg *config.Config) VersionStore {
 		zkPollingInterval: cfg.ZKPollingInterval(),
 		versionWatcher:    nil,
 	}
-	go store.connectAndInitZKAsync(cfg)
+	go store.connectToZKAsync(cfg, func(client zookeeper.ZKClient) {
+		if connectedCB != nil {
+			connectedCB(client)
+		}
+		store.initZKVersionStore(client)
+	})
 	return store
+}
+
+func (zks *zkVersionStore) connectToZKAsync(cfg *config.Config, callback func(zookeeper.ZKClient)) {
+	connectionAttempt := 0
+	b := &backoff.Backoff{
+		Min:    15 * time.Second,
+		Max:    5 * time.Minute,
+		Factor: 2,
+		Jitter: false,
+	}
+	for {
+		connectionAttempt++
+		zkClient, err := zookeeper.Connect(cfg)
+		if err != nil {
+			backoffDuration := b.Duration()
+			log.WithError(err).WithFields(logrus.Fields{
+				"connectionAttempt": connectionAttempt,
+				"backOffDuration":   backoffDuration,
+			}).Warning("Failed to connect to ZK")
+			<-time.After(backoffDuration)
+		} else {
+			callback(zkClient)
+			if connectionAttempt > 1 {
+				log.WithFields(logrus.Fields{
+					"connectionAttempt": connectionAttempt,
+				}).Info("Successfully connected to ZK after previous failures")
+			} else {
+				log.Info("Successfully connected to ZK")
+			}
+			return
+		}
+	}
+}
+
+func (zks *zkVersionStore) ZKConnected(client zookeeper.ZKClient) {
+	zks.initZKVersionStore(client)
 }
 
 // CurrentVersion gets the current UIVersion stored.
@@ -91,38 +132,6 @@ func (zks *zkVersionStore) WatchForVersionChange(listener VersionChangeListener)
 	}
 
 	return nil
-}
-
-func (zks *zkVersionStore) connectAndInitZKAsync(cfg *config.Config) {
-	connectionAttempt := 0
-	b := &backoff.Backoff{
-		Min:    15 * time.Second,
-		Max:    5 * time.Minute,
-		Factor: 2,
-		Jitter: false,
-	}
-	for {
-		connectionAttempt++
-		zkClient, err := zookeeper.Connect(cfg)
-		if err != nil {
-			backoffDuration := b.Duration()
-			log.WithError(err).WithFields(logrus.Fields{
-				"connectionAttempt": connectionAttempt,
-				"backOffDuration":   backoffDuration,
-			}).Warning("Failed to connect to ZK")
-			<-time.After(backoffDuration)
-		} else {
-			zks.initZKVersionStore(zkClient)
-			if connectionAttempt > 1 {
-				log.WithFields(logrus.Fields{
-					"connectionAttempt": connectionAttempt,
-				}).Info("Successfully connected to ZK after previous failures")
-			} else {
-				log.Info("Successfully connected to ZK")
-			}
-			return
-		}
-	}
 }
 
 func (zks *zkVersionStore) initZKVersionStore(client zookeeper.ZKClient) {

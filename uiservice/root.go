@@ -11,8 +11,10 @@ import (
 	"sync"
 
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/dcos/dcos-ui-update-service/constants"
 	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/updatemanager"
+	"github.com/dcos/dcos-ui-update-service/zookeeper"
 	"github.com/gorilla/handlers"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -35,10 +37,6 @@ type UIService struct {
 }
 
 func SetupService(cfg *config.Config) (*UIService, error) {
-	updateManager, err := updatemanager.NewClient(cfg)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create update manager")
-	}
 
 	dcos := dcos.NewDCOS(cfg)
 	myip, err := dcos.DetectIP()
@@ -48,9 +46,17 @@ func SetupService(cfg *config.Config) (*UIService, error) {
 		log.WithField("IP", myip).Debug("Container IP")
 	}
 	leader, _ := dcos.IsLeader()
-		log.WithField("leader", leader).Debug("Is mesos leader")
+	log.WithField("leader", leader).Debug("Is mesos leader")
 
-	versionStore := NewZKVersionStore(cfg)
+	updateManager, err := updatemanager.NewClient(cfg, dcos)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create update manager")
+	}
+	versionStore := NewZKVersionStore(cfg, func(client zookeeper.ZKClient) {
+		// do zk checks
+		checkZKNodes(client, dcos)
+		go updateManager.ZKConnected(client)
+	})
 
 	service := &UIService{
 		Config:        cfg,
@@ -108,7 +114,7 @@ func checkUIDistSymlink(cfg *config.Config) {
 	}
 }
 
-func checkCurrentVersion(updateManager *updatemanager.Client) {
+func checkCurrentVersion(updateManager updatemanager.UpdateManager) {
 	version, err := updateManager.CurrentVersion()
 	if err != nil {
 		logrus.WithError(err).Warn("Error retrieving the current package version from update manager")
@@ -123,7 +129,7 @@ func checkCurrentVersion(updateManager *updatemanager.Client) {
 	}
 }
 
-func deleteOrphanedVersions(updateManager *updatemanager.Client) error {
+func deleteOrphanedVersions(updateManager updatemanager.UpdateManager) error {
 	version, err := updateManager.CurrentVersion()
 	if err != nil {
 		return err
@@ -143,6 +149,42 @@ func checkVersionsRoot(cfg *config.Config) {
 		}
 	} else {
 		logger.Info("Current VersionsRoot directory.")
+	}
+}
+
+func checkZKNodes(client zookeeper.ZKClient, dcos dcos.DCOS) {
+	leader, _ := dcos.IsLeader()
+	if !leader {
+		return
+	}
+	log.Debug("Checking if expected ZK Nodes exists, attempting to create if they don't")
+	paths := []string{
+		constants.VersionNode,
+		constants.UpdateNode,
+		constants.ClusterStatusNode,
+		constants.UpdateLeaderNode,
+		constants.NodeStatusNode,
+	}
+	for _, node := range paths {
+		fullPath := path.Join(client.BasePath(), node)
+		exists, _, err := client.Exists(fullPath)
+		if err == nil {
+			if exists {
+				value, _, err := client.Get(fullPath)
+				if err == nil {
+					log.WithFields(logrus.Fields{
+						"zk-node": fullPath,
+						"value":   string(value),
+					}).Debug("ZK Node exists, current value")
+				}
+			} else {
+				log.WithField("zk-node", fullPath).Debug("Attempting to initialize ZK Node")
+				err = client.Create(fullPath, []byte(""), zookeeper.PermAll)
+				if err != nil {
+					log.WithError(err).WithField("zk-node", fullPath).Warning("Failed to initialize ZK Node")
+				}
+			}
+		}
 	}
 }
 

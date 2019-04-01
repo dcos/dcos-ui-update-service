@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/tests"
 	"github.com/dcos/dcos-ui-update-service/uiservice"
 	"github.com/dcos/dcos-ui-update-service/updatemanager"
@@ -68,7 +69,7 @@ func setupTestUIService() *uiservice.UIService {
 		"--master-count-file", "../fixtures/single-master",
 	})
 
-	um, _ := updatemanager.NewClient(cfg)
+	um, _ := updatemanager.NewClient(cfg, dcos.NewDCOS(cfg))
 	um.Fs = afero.NewOsFs()
 
 	os.MkdirAll(cfg.VersionsRoot(), 0755)

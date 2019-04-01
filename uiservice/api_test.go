@@ -48,8 +48,6 @@ func TestRouter(t *testing.T) {
 	})
 
 	t.Run("Reset to prebundled UI", func(t *testing.T) {
-		var removeAllCalled = false
-
 		req, err := http.NewRequest("DELETE", "/api/v1/reset/", nil)
 		if err != nil {
 			t.Fatal(err)
@@ -58,9 +56,10 @@ func TestRouter(t *testing.T) {
 		defer tearDown(t)
 		service := setupUIServiceWithVersion()
 		umDouble := UpdateManagerDouble()
-		umDouble.RemoveAllCall = func() error {
-			removeAllCalled = true
-			return nil
+		umDouble.LeadResetResult = &updatemanager.UpdateResult{
+			Operation:  updatemanager.ResetUIOperation,
+			Successful: true,
+			Message:    "OK",
 		}
 		service.UpdateManager = umDouble
 
@@ -71,9 +70,6 @@ func TestRouter(t *testing.T) {
 			t.Errorf("handler returned wrong status code: got %v want %v",
 				status, http.StatusOK)
 		}
-
-		tests.H(t).BoolEql(removeAllCalled, true)
-		println("Here")
 	})
 
 	t.Run("Version Update", func(t *testing.T) {

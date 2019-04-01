@@ -5,6 +5,7 @@ builds/
 versions/
 dcos-ui-update-service
 .docker.build.dev*
+application-build-*
 testdata/clusterProxy/node_modules/
 testdata/clusterProxy/package-lock.json
 testdata/docroot/dcos-ui-dist

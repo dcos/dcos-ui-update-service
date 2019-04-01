@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/dcos/dcos-ui-update-service/constants"
 	"github.com/dcos/dcos-ui-update-service/updatemanager"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -16,7 +18,7 @@ func newRouter(service *UIService) *mux.Router {
 	r.HandleFunc("/api/v1/", notImplementedHandler)
 	r.HandleFunc("/api/v1/version/", versionHandler(service)).Methods("GET")
 	r.HandleFunc("/api/v1/update/{version}/", updateHandler(service)).Methods("POST")
-	r.HandleFunc("/api/v1/reset/", resetToDefaultUIHandler(service)).Methods("DELETE")
+	r.HandleFunc("/api/v1/reset/", leadUIResetHandler(service)).Methods("DELETE")
 
 	return r
 }
@@ -54,6 +56,7 @@ func versionHandler(service *UIService) func(http.ResponseWriter, *http.Request)
 		js, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -124,18 +127,8 @@ func updateHandler(service *UIService) func(http.ResponseWriter, *http.Request) 
 	}
 }
 
-func resetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
+func leadUIResetHandler(service *UIService) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// verify we aren't currently serving pre-bundled version
-		currentVersion, err := service.UpdateManager.CurrentVersion()
-		if err != nil {
-			logrus.WithError(err).Error("Failed to check the current version")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		logrus.WithField("CurrentVersion", currentVersion).Debug("Received reset request.")
-
 		if updatingVersion, lockErr := setServiceUpdating(service, ""); lockErr != nil {
 			var message string
 			if UIVersion(updatingVersion) == PreBundledUIVersion {
@@ -152,29 +145,46 @@ func resetToDefaultUIHandler(service *UIService) func(http.ResponseWriter, *http
 		}
 		defer resetServiceFromUpdate(service)
 
-		if UIVersion(currentVersion) != PreBundledUIVersion {
-			err = updateServedVersion(service, service.Config.DefaultDocRoot())
-			if err != nil {
-				logrus.WithError(err).Error("Failed to reset to default document root")
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+		logrus.Debug("Received reset request.")
+		timeoutChannel := make(chan struct{})
+		resetComplete := service.UpdateManager.LeadUIReset(timeoutChannel)
+		var response *updatemanager.UpdateResult
+		select {
+		case response = <-resetComplete:
+			logrus.WithField("result", response).Info("UI Reset Result")
+			break
+		case <-time.After(constants.UpdateOperationTimeout):
+			logrus.Info("UI Reset Timedout")
+			response = &updatemanager.UpdateResult{
+				Operation:  "reset",
+				Successful: false,
+				Message:    "Reset operation timed out",
 			}
-
-			storeErr := service.VersionStore.UpdateCurrentVersion(PreBundledUIVersion)
-			if storeErr != nil {
-				logrus.WithError(storeErr).Error("Failed to update the version store to the PreBundledUIVersion.")
-			}
+			close(timeoutChannel)
+			break
 		}
+		if response.Successful {
+			logrus.WithField("message", response.Message).Info("Syncronized reset completed successfully")
+			go func() {
+				storeErr := service.VersionStore.UpdateCurrentVersion(PreBundledUIVersion)
+				if storeErr != nil {
+					logrus.WithError(storeErr).Error("Failed to update the version store to the PreBundledUIVersion.")
+				}
+			}()
 
-		err = service.UpdateManager.RemoveAllVersionsExcept("")
-		if err != nil {
-			logrus.WithError(err).Error("Failed to remove previous versions when resetting to default document root")
+			w.Header().Add("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		} else {
+			entry := logrus.WithField("message", response.Message)
+			if response.Error != nil {
+				entry = entry.WithError(response.Error)
+			}
+			entry.Warning("Syncronized reset failed")
+
+			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusInternalServerError)
-			return
+			w.Write([]byte(response.Message))
 		}
-
-		w.Header().Add("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
 	}
 }

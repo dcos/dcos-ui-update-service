@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/dcos/dcos-ui-update-service/config"
+	"github.com/dcos/dcos-ui-update-service/dcos"
 	"github.com/dcos/dcos-ui-update-service/tests"
 	"github.com/dcos/dcos-ui-update-service/updatemanager"
+	"github.com/dcos/dcos-ui-update-service/zookeeper"
 	"github.com/spf13/afero"
 )
 
@@ -26,7 +28,7 @@ func setupTestUIService() *UIService {
 		"--master-count-file", "../fixtures/single-master",
 	})
 
-	um, _ := updatemanager.NewClient(cfg)
+	um, _ := updatemanager.NewClient(cfg, dcos.NewDCOS(cfg))
 	um.Fs = afero.NewOsFs()
 	os.MkdirAll(cfg.VersionsRoot(), 0755)
 	os.MkdirAll(cfg.DefaultDocRoot(), 0755)
@@ -48,7 +50,7 @@ func setupUIServiceWithVersion() *UIService {
 		"--master-count-file", "../fixtures/single-master",
 	})
 
-	um, _ := updatemanager.NewClient(cfg)
+	um, _ := updatemanager.NewClient(cfg, dcos.NewDCOS(cfg))
 	um.Fs = afero.NewOsFs()
 	versionPath := path.Join(path.Join(cfg.VersionsRoot(), "2.24.4"), "dist")
 	os.MkdirAll(cfg.VersionsRoot(), 0755)
@@ -176,6 +178,7 @@ type fakeUpdateManager struct {
 	UpdateError          error
 	UpdateCall           func(string)
 	UpdateNewVersionPath string
+	LeadResetResult      *updatemanager.UpdateResult
 }
 
 func UpdateManagerDouble() *fakeUpdateManager {
@@ -194,6 +197,10 @@ func (um *fakeUpdateManager) UpdateToVersion(newVer string, cb func(string) erro
 	if cberr := cb(um.UpdateNewVersionPath); cberr != nil {
 		return cberr
 	}
+	return nil
+}
+
+func (um *fakeUpdateManager) UpdateServedVersion(path string) error {
 	return nil
 }
 
@@ -219,6 +226,28 @@ func (um *fakeUpdateManager) RemoveAllVersionsExcept(string) error {
 	return nil
 }
 
+func (um *fakeUpdateManager) LeadUIReset(timeout <-chan struct{}) <-chan *updatemanager.UpdateResult {
+	result := make(chan *updatemanager.UpdateResult)
+
+	go func(result chan *updatemanager.UpdateResult, timeout <-chan struct{}) {
+		if um.ResetError != nil {
+
+		}
+		if um.LeadResetResult != nil {
+			result <- um.LeadResetResult
+			return
+		}
+		select {
+		case <-timeout:
+			return
+		}
+	}(result, timeout)
+
+	return result
+}
+
+func (um *fakeUpdateManager) ZKConnected(client zookeeper.ZKClient) {}
+
 func (um *fakeUpdateManager) CurrentVersion() (string, error) {
 	if um.VersionError != nil {
 		return "", um.VersionError
@@ -231,6 +260,13 @@ func (um *fakeUpdateManager) PathToCurrentVersion() (string, error) {
 		return "", um.VersionPathError
 	}
 	return um.VersionPathResult, nil
+}
+
+func (um *fakeUpdateManager) ClusterStatus() updatemanager.UpdateServiceStatus {
+	return updatemanager.UpdateServiceStatus{
+		Operation: updatemanager.IdleOperation,
+		State:     updatemanager.IdleOperationState,
+	}
 }
 
 type fakeVersionStore struct {
