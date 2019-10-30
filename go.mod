@@ -27,3 +27,5 @@ require (
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/square/go-jose.v2 v2.1.9 // indirect
 )
+
+go 1.13

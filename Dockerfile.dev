@@ -1,4 +1,4 @@
-FROM golang:1.11.3
+FROM golang:1.13
 
 RUN apt-get update && apt-get install -y curl vim python-pip groff && \
     pip install --upgrade awscli
