@@ -12,7 +12,7 @@ require (
 	github.com/ivpusic/golog v0.0.0-20170608213328-28640bee649f // indirect
 	github.com/ivpusic/rerun v0.0.0-20170331080801-adc8acf1481b // indirect
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
-	github.com/pkg/errors v0.8.0
+	github.com/pkg/errors v0.9.1
 	github.com/samuel/go-zookeeper v0.0.0-20180130194729-c4fab1ac1bec
 	github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644 // indirect
 	github.com/sirupsen/logrus v1.2.0
