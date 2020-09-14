@@ -6,7 +6,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20181012123002-c6f51f82210d
 	github.com/dcos/dcos-go v0.0.0-20181019125502-5f6f91b575d8
 	github.com/google/go-cmp v0.2.0
-	github.com/gorilla/handlers v1.4.0
+	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.6.2
 	github.com/ivpusic/go-clicolor v0.0.0-20150828210804-23f0b77f328a // indirect
 	github.com/ivpusic/golog v0.0.0-20170608213328-28640bee649f // indirect
