@@ -20,8 +20,7 @@ require (
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.2.2
-	github.com/tidwall/gjson v1.1.3
-	github.com/tidwall/match v0.0.0-20171002075945-1731857f09b1 // indirect
+	github.com/tidwall/gjson v1.6.3
 	golang.org/x/net v0.0.0-20181114220301-adae6a3d119a
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
