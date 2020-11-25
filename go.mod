@@ -5,7 +5,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/coreos/go-systemd v0.0.0-20181012123002-c6f51f82210d
 	github.com/dcos/dcos-go v0.0.0-20181019125502-5f6f91b575d8
-	github.com/google/go-cmp v0.2.0
+	github.com/google/go-cmp v0.5.4
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.6.2
 	github.com/ivpusic/go-clicolor v0.0.0-20150828210804-23f0b77f328a // indirect
